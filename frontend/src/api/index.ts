@@ -4,6 +4,10 @@ import type {
   AiGenerationResult,
   ApiDocumentImportResult,
   ApiEndpoint,
+  DocumentImportUrlRequest,
+  DocumentImportUrlResponse,
+  DocumentPreviewRequest,
+  DocumentPreviewResponse,
   Environment,
   ExecutionRunResponse,
   Project,
@@ -33,7 +37,11 @@ export const documentApi = {
   importOpenApi: (projectId: number, data: { name: string; content?: unknown; url?: string }) =>
     request<ApiDocumentImportResult>(http.post(`/projects/${projectId}/api-documents/openapi`, data)),
   importCurl: (projectId: number, data: { name: string; curl_text: string }) =>
-    request<ApiDocumentImportResult>(http.post(`/projects/${projectId}/api-documents/curl`, data))
+    request<ApiDocumentImportResult>(http.post(`/projects/${projectId}/api-documents/curl`, data)),
+  previewInput: (projectId: number, data: DocumentPreviewRequest) =>
+    request<DocumentPreviewResponse>(http.post(`/projects/${projectId}/documents/preview-url`, data)),
+  importInput: (projectId: number, data: DocumentImportUrlRequest) =>
+    request<DocumentImportUrlResponse>(http.post(`/projects/${projectId}/documents/import-url`, data))
 }
 
 export const endpointApi = {

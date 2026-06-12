@@ -123,7 +123,10 @@ class TestcaseGeneratorAgent:
         values: dict[str, Any] = {}
         for key, definition in params.items():
             if isinstance(definition, dict):
-                values[key] = definition.get("example", self._example_from_schema(definition.get("schema") or definition))
+                values[key] = definition.get(
+                    "value",
+                    definition.get("example", self._example_from_schema(definition.get("schema") or definition)),
+                )
             else:
                 values[key] = definition
         return values
@@ -134,6 +137,8 @@ class TestcaseGeneratorAgent:
             return example_request["body"]
         body_schema = endpoint.request_body_schema or {}
         if isinstance(body_schema, dict):
+            if isinstance(body_schema.get("x-example"), dict):
+                return body_schema["x-example"]
             if isinstance(body_schema.get("example"), dict):
                 return body_schema["example"]
             properties = body_schema.get("properties")

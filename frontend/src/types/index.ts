@@ -116,6 +116,75 @@ export interface ApiDocumentImportResult {
   endpoint_count: number
 }
 
+export interface EndpointPreviewItem {
+  endpoint_key: string
+  name: string
+  group_name?: string | null
+  summary?: string | null
+  operation_id?: string | null
+  method: string
+  path: string
+  description?: string | null
+  headers?: Record<string, unknown> | null
+  request_params?: Record<string, unknown> | null
+  request_body_schema?: Record<string, unknown> | null
+  response_schema?: Record<string, unknown> | null
+  example_request?: Record<string, unknown> | null
+  example_response?: unknown
+  params_example_json?: Record<string, unknown>
+  params_schema_json?: unknown
+  params_edit_json?: Record<string, unknown>
+  body_example_json?: unknown
+  body_schema_json?: unknown
+  body_edit_json?: unknown
+  response_example_json?: unknown
+  response_schema_json?: unknown
+  response_edit_json?: unknown
+  auth_required: boolean
+  tags?: unknown[] | null
+  status: string
+  source: string
+}
+
+export interface DocumentPreviewRequest {
+  name: string
+  input_type: string
+  input_content: string
+  cookie?: string | null
+  api_path_filter?: string | null
+  method_filter?: string | null
+  keyword_filter?: string | null
+  group_filter?: string | null
+  need_ai_parse: boolean
+}
+
+export interface DocumentPreviewResponse {
+  detected_type: string
+  resolved_spec_url?: string | null
+  hash_hint?: string | null
+  total_endpoint_count: number
+  matched_endpoint_count: number
+  endpoints: EndpointPreviewItem[]
+  warnings: string[]
+  errors: string[]
+}
+
+export interface DocumentImportUrlRequest extends DocumentPreviewRequest {
+  save_mode: 'save_selected' | 'save_all'
+  selected_endpoint_keys: string[]
+  endpoints?: EndpointPreviewItem[]
+}
+
+export interface DocumentImportUrlResponse extends ApiDocumentImportResult {
+  detected_type: string
+  resolved_spec_url?: string | null
+  hash_hint?: string | null
+  total_endpoint_count: number
+  matched_endpoint_count: number
+  warnings: string[]
+  errors: string[]
+}
+
 export interface AiGenerationResult {
   endpoint_id: number
   analysis_record_id: number
