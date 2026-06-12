@@ -1,0 +1,31 @@
+from urllib.parse import urljoin
+
+import requests
+
+
+class ApiClient:
+    def __init__(self, base_url: str, headers: dict | None = None, timeout: int = 10) -> None:
+        self.base_url = base_url.rstrip("/") + "/"
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.session = requests.Session()
+
+    def request(self, request_data: dict) -> requests.Response:
+        method = request_data.get("method", "GET").upper()
+        path = self._format_path(request_data.get("path", "/"), request_data.get("path_params") or {})
+        headers = dict(self.headers)
+        headers.update(request_data.get("headers") or {})
+        timeout = request_data.get("timeout") or self.timeout
+        return self.session.request(
+            method=method,
+            url=urljoin(self.base_url, path.lstrip("/")),
+            headers=headers,
+            params=request_data.get("query") or {},
+            json=request_data.get("body") or None,
+            timeout=timeout,
+        )
+
+    def _format_path(self, path: str, path_params: dict) -> str:
+        for key, value in path_params.items():
+            path = path.replace("{" + str(key) + "}", str(value))
+        return path

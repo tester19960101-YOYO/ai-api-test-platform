@@ -1,0 +1,12 @@
+class VariableStore:
+    def __init__(self, initial: dict | None = None) -> None:
+        self._values = initial or {}
+
+    def get(self, key: str, default=None):
+        return self._values.get(key, default)
+
+    def set(self, key: str, value) -> None:
+        self._values[key] = value
+
+    def as_dict(self) -> dict:
+        return dict(self._values)

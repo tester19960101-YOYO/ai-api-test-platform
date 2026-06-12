@@ -1,0 +1,8 @@
+from jsonpath_ng import parse
+
+
+def extract_json_value(data: dict, path: str):
+    matches = parse(path).find(data)
+    if not matches:
+        return None
+    return matches[0].value

@@ -1,0 +1,61 @@
+import json
+
+from jsonpath_ng import parse
+
+
+def run_assertions(response, assertions: list[dict], response_time_ms: int) -> list[dict]:
+    results = []
+    for assertion in assertions:
+        assertion_type = assertion.get("type")
+        try:
+            if assertion_type == "status_code":
+                _assert_status_code(response, assertion)
+            elif assertion_type == "json_path_equal":
+                _assert_json_path_equal(response, assertion)
+            elif assertion_type == "json_path_not_null":
+                _assert_json_path_not_null(response, assertion)
+            elif assertion_type == "json_path_contains":
+                _assert_json_path_contains(response, assertion)
+            elif assertion_type == "response_time":
+                _assert_response_time(response_time_ms, assertion)
+            else:
+                raise AssertionError(f"unsupported assertion type: {assertion_type}")
+            results.append({"assertion": assertion, "passed": True, "message": "ok"})
+        except AssertionError as exc:
+            results.append({"assertion": assertion, "passed": False, "message": str(exc)})
+    return results
+
+
+def _assert_status_code(response, assertion: dict) -> None:
+    expected = assertion.get("expected")
+    assert response.status_code == expected, f"expected status_code {expected}, got {response.status_code}"
+
+
+def _assert_json_path_equal(response, assertion: dict) -> None:
+    values = _json_path_values(response, assertion.get("path"))
+    expected = assertion.get("expected")
+    assert values, f"json path not found: {assertion.get('path')}"
+    assert values[0] == expected, f"expected {expected}, got {values[0]}"
+
+
+def _assert_json_path_not_null(response, assertion: dict) -> None:
+    values = _json_path_values(response, assertion.get("path"))
+    assert values, f"json path not found: {assertion.get('path')}"
+    assert values[0] is not None, f"json path is null: {assertion.get('path')}"
+
+
+def _assert_json_path_contains(response, assertion: dict) -> None:
+    values = _json_path_values(response, assertion.get("path"))
+    expected = str(assertion.get("expected"))
+    assert values, f"json path not found: {assertion.get('path')}"
+    assert expected in json.dumps(values[0], ensure_ascii=False), f"expected content {expected} not found"
+
+
+def _assert_response_time(response_time_ms: int, assertion: dict) -> None:
+    expected = assertion.get("expected")
+    assert response_time_ms <= expected, f"expected response_time <= {expected}, got {response_time_ms}"
+
+
+def _json_path_values(response, path: str):
+    data = response.json()
+    return [match.value for match in parse(path).find(data)]

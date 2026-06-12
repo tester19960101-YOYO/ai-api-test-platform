@@ -1,0 +1,80 @@
+import json
+import time
+from pathlib import Path
+
+import pytest
+import yaml
+
+from core.assertion import run_assertions
+from core.client import ApiClient
+from core.logger import get_logger
+
+ROOT = Path(__file__).resolve().parents[1]
+logger = get_logger()
+
+
+def load_yaml(path: Path):
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+ENV = load_yaml(ROOT / "config" / "env.yaml")
+CASES = load_yaml(ROOT / "cases" / "cases.yaml") or []
+CLIENT = ApiClient(
+    base_url=ENV["base_url"],
+    headers=ENV.get("headers") or {},
+    timeout=ENV.get("timeout") or 10,
+)
+
+
+def append_result(result: dict) -> None:
+    result_file = ROOT / "results" / "results.jsonl"
+    result_file.parent.mkdir(parents=True, exist_ok=True)
+    with result_file.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+
+@pytest.mark.parametrize("case", CASES, ids=[case.get("name", str(case.get("id"))) for case in CASES])
+def test_api_case(case):
+    started = time.perf_counter()
+    response = None
+    assertion_results = []
+    error_message = None
+    status = "passed"
+    request_data = (case.get("steps") or [{}])[0].get("request") or {}
+
+    try:
+        response = CLIENT.request(request_data)
+        response_time_ms = int((time.perf_counter() - started) * 1000)
+        assertion_results = run_assertions(response, case.get("assertions") or [], response_time_ms)
+        if any(not item["passed"] for item in assertion_results):
+            status = "failed"
+            error_message = "; ".join(item["message"] for item in assertion_results if not item["passed"])
+            raise AssertionError(error_message)
+    except Exception as exc:
+        response_time_ms = int((time.perf_counter() - started) * 1000)
+        status = "failed"
+        error_message = str(exc)
+        raise
+    finally:
+        response_data = None
+        if response is not None:
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = {"text": response.text}
+        append_result(
+            {
+                "test_case_id": case.get("id"),
+                "api_endpoint_id": case.get("api_endpoint_id"),
+                "status": status,
+                "status_code": response.status_code if response is not None else None,
+                "response_time_ms": response_time_ms,
+                "request_data": request_data,
+                "response_data": response_data,
+                "assertion_result": {
+                    "items": assertion_results,
+                    "passed": status == "passed",
+                },
+                "error_message": error_message,
+            }
+        )
