@@ -48,10 +48,19 @@ def test_api_case(case):
     try:
         response = CLIENT.request(raw_request_data)
         response_time_ms = int((time.perf_counter() - started) * 1000)
-        assertion_results = run_assertions(response, case.get("assertions") or [], response_time_ms)
-        if any(not item["passed"] for item in assertion_results):
+        assertion_results = run_assertions(
+            response,
+            {
+                "swagger_assertions": case.get("swagger_assertions") or [],
+                "ai_assertions": case.get("ai_assertions") or [],
+                "user_assertions": case.get("user_assertions") or [],
+                "final_assertions": case.get("final_assertions") or [],
+            },
+            response_time_ms,
+        )
+        if not assertion_results.get("passed", False):
             status = "failed"
-            error_message = "; ".join(item["message"] for item in assertion_results if not item["passed"])
+            error_message = "; ".join(item["message"] for item in assertion_results.get("items", []) if not item["passed"])
             raise AssertionError(error_message)
     except Exception as exc:
         response_time_ms = int((time.perf_counter() - started) * 1000)
@@ -78,10 +87,7 @@ def test_api_case(case):
                 "response_time_ms": response_time_ms,
                 "request_data": request_data,
                 "response_data": response_data,
-                "assertion_result": {
-                    "items": assertion_results,
-                    "passed": status == "passed",
-                },
+                "assertion_result": assertion_results or {"items": [], "passed": status == "passed"},
                 "error_message": error_message,
             }
         )

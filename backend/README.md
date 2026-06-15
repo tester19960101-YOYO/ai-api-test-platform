@@ -2,7 +2,7 @@
 
 ## 后端简介
 
-这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强。
+这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强，在第 10.1 阶段支持断言系统 2.0 融合引擎。
 
 ## 技术栈
 
@@ -93,6 +93,7 @@ GET /api/v1/health
 - 执行请求头合并
 - 业务断言兜底
 - 执行结果保存脱敏请求数据、响应体、curl 和断言结果
+- 断言系统 2.0：融合用户断言、Swagger/OpenAPI 基础断言和 mock AI 断言建议
 
 ## 第 9 阶段新增接口
 
@@ -132,6 +133,15 @@ POST /api/v1/executions/run
 - 响应包含 `code` 或 `success` 时会自动补充默认业务断言。
 - 非 JSON 响应保存原始文本和 JSON 解析错误提示。
 - 报告和日志不输出完整 token / cookie。
+
+第 10.1 阶段断言增强：
+
+- 新增 `backend/app/core/assertion_engine_v2.py`。
+- 统一断言结构，支持 `source`、`type`、`path`、`operator`、`expected`、`priority`、`enabled`。
+- 融合优先级：用户断言 > Swagger/OpenAPI 断言 > AI 建议断言。
+- `business_code` 不再写死为 1，支持 `success_codes` 和 `success_expression`。
+- `$.data` 相关 JSONPath 仅在业务成功后执行。
+- mock AI 仅生成带 `confidence` 的建议断言，默认不控制 pass/fail。
 
 生成路径：
 

@@ -3,35 +3,46 @@ import json
 from jsonpath_ng import parse
 
 
-def run_assertions(response, assertions: list[dict], response_time_ms: int) -> list[dict]:
+def run_assertions(response, assertion_context: dict, response_time_ms: int) -> dict:
+    final_assertions = assertion_context.get("final_assertions") or []
     results = []
-    normalized_assertions = list(assertions or [])
-    normalized_assertions.extend(_default_business_assertions(response, normalized_assertions))
-    for assertion in normalized_assertions:
-        assertion_type = assertion.get("type")
+    business_success = True
+
+    for assertion in final_assertions:
+        if not assertion.get("enabled", True):
+            results.append({"assertion": assertion, "passed": True, "skipped": True, "message": "disabled suggestion"})
+            continue
+        if _is_data_assertion(assertion) and not business_success:
+            results.append({"assertion": assertion, "passed": True, "skipped": True, "message": "skip data assertion because business failed"})
+            continue
         try:
-            if assertion_type == "status_code":
-                _assert_status_code(response, assertion)
-            elif assertion_type == "business_code":
-                _assert_business_code(response, assertion)
-            elif assertion_type == "business_success":
-                _assert_business_success(response, assertion)
-            elif assertion_type == "json_path_equal":
-                _assert_json_path_equal(response, assertion)
-            elif assertion_type == "json_path_not_null":
-                _assert_json_path_not_null(response, assertion)
-            elif assertion_type == "json_path_not_empty":
-                _assert_json_path_not_empty(response, assertion)
-            elif assertion_type == "json_path_contains":
-                _assert_json_path_contains(response, assertion)
-            elif assertion_type == "response_time":
-                _assert_response_time(response_time_ms, assertion)
-            else:
-                raise AssertionError(f"unsupported assertion type: {assertion_type}")
+            _execute_assertion(response, assertion, response_time_ms)
             results.append({"assertion": assertion, "passed": True, "message": "ok"})
         except AssertionError as exc:
+            if assertion.get("type") == "business_code" or assertion.get("path") == "$.success":
+                business_success = False
             results.append({"assertion": assertion, "passed": False, "message": str(exc)})
-    return results
+
+    return {
+        "items": results,
+        "passed": all(item["passed"] for item in results if not item.get("skipped")),
+        "final_assertions": final_assertions,
+    }
+
+
+def _execute_assertion(response, assertion: dict, response_time_ms: int) -> None:
+    assertion_type = assertion.get("type")
+    if assertion_type == "status_code":
+        _assert_status_code(response, assertion)
+    elif assertion_type == "business_code":
+        _assert_business_code(response, assertion)
+    elif assertion_type == "json_path":
+        _assert_json_path(response, assertion)
+    elif assertion_type == "response_time":
+        expected = assertion.get("expected")
+        assert response_time_ms <= expected, f"expected response_time <= {expected}, got {response_time_ms}"
+    else:
+        raise AssertionError(f"unsupported assertion type: {assertion_type}")
 
 
 def _assert_status_code(response, assertion: dict) -> None:
@@ -39,91 +50,83 @@ def _assert_status_code(response, assertion: dict) -> None:
     assert response.status_code == expected, f"expected status_code {expected}, got {response.status_code}"
 
 
-def _assert_json_path_equal(response, assertion: dict) -> None:
-    values = _json_path_values(response, assertion.get("path"))
-    expected = assertion.get("expected")
-    assert values, f"json path not found: {assertion.get('path')}"
-    assert values[0] == expected, f"expected {expected}, got {values[0]}"
-
-
 def _assert_business_code(response, assertion: dict) -> None:
+    data = _response_json(response)
+    success_expression = assertion.get("success_expression")
+    if success_expression:
+        assert _eval_success_expression(data, success_expression), f"business expression failed: {success_expression}"
+        return
     path = assertion.get("path") or "$.code"
-    expected = assertion.get("expected", 200)
-    values = _json_path_values(response, path)
+    values = _json_path_values(data, path)
     assert values, f"business code path not found: {path}"
-    assert values[0] == expected, f"expected business code {expected}, got {values[0]}"
-
-
-def _assert_business_success(response, assertion: dict) -> None:
-    path = assertion.get("path") or "$.success"
-    expected = assertion.get("expected", True)
-    values = _json_path_values(response, path)
-    assert values, f"business success path not found: {path}"
-    assert values[0] is expected, f"expected business success {expected}, got {values[0]}"
-
-
-def _assert_json_path_not_null(response, assertion: dict) -> None:
-    values = _json_path_values(response, assertion.get("path"))
-    assert values, f"json path not found: {assertion.get('path')}"
-    assert values[0] is not None, f"json path is null: {assertion.get('path')}"
-
-
-def _assert_json_path_not_empty(response, assertion: dict) -> None:
-    values = _json_path_values(response, assertion.get("path"))
-    assert values, f"json path not found: {assertion.get('path')}"
-    assert values[0] not in (None, "", [], {}), f"json path is empty: {assertion.get('path')}"
-
-
-def _assert_json_path_contains(response, assertion: dict) -> None:
-    values = _json_path_values(response, assertion.get("path"))
-    expected = str(assertion.get("expected"))
-    assert values, f"json path not found: {assertion.get('path')}"
-    assert expected in json.dumps(values[0], ensure_ascii=False), f"expected content {expected} not found"
-
-
-def _assert_response_time(response_time_ms: int, assertion: dict) -> None:
+    actual = values[0]
+    success_codes = assertion.get("success_codes")
+    if isinstance(success_codes, list):
+        assert actual in success_codes, f"expected business code in {success_codes}, got {actual}"
+        return
     expected = assertion.get("expected")
-    assert response_time_ms <= expected, f"expected response_time <= {expected}, got {response_time_ms}"
+    if isinstance(expected, list):
+        assert actual in expected, f"expected business code in {expected}, got {actual}"
+    else:
+        assert actual == expected, f"expected business code {expected}, got {actual}"
 
 
-def _json_path_values(response, path: str):
-    data = response.json()
+def _assert_json_path(response, assertion: dict) -> None:
+    data = _response_json(response)
+    path = assertion.get("path")
+    operator = assertion.get("operator") or "=="
+    values = _json_path_values(data, path)
+    if operator == "exists":
+        assert values and values[0] is not None, f"json path not found or null: {path}"
+        return
+    assert values, f"json path not found: {path}"
+    actual = values[0]
+    expected = assertion.get("expected")
+    if operator == "==":
+        assert actual == expected, f"expected {expected}, got {actual}"
+    elif operator == "!=":
+        assert actual != expected, f"expected value != {expected}, got {actual}"
+    elif operator == "contains":
+        assert str(expected) in json.dumps(actual, ensure_ascii=False), f"expected content {expected} not found"
+    else:
+        raise AssertionError(f"unsupported json path operator: {operator}")
+
+
+def _response_json(response):
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise AssertionError("response is not valid JSON") from exc
+
+
+def _json_path_values(data, path: str):
     return [match.value for match in parse(path).find(data)]
 
 
-def _response_json_or_none(response):
-    try:
-        return response.json()
-    except ValueError:
+def _eval_success_expression(data: dict, expression: str) -> bool:
+    if "==" not in expression:
+        return False
+    left, right = [part.strip() for part in expression.split("==", 1)]
+    values = _json_path_values(data, left)
+    if not values:
+        return False
+    expected = _parse_literal(right)
+    return values[0] == expected
+
+
+def _parse_literal(value: str):
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    if value.lower() == "null":
         return None
+    try:
+        return int(value)
+    except ValueError:
+        return value.strip("\"'")
 
 
-def _has_assertion_for_path(assertions: list[dict], path: str) -> bool:
-    return any(item.get("path") == path for item in assertions if isinstance(item, dict))
-
-
-def _default_business_assertions(response, assertions: list[dict]) -> list[dict]:
-    data = _response_json_or_none(response)
-    if not isinstance(data, dict):
-        return []
-    defaults = []
-    if "code" in data and not _has_assertion_for_path(assertions, "$.code"):
-        expected = 200 if data.get("code") == 200 else 0
-        defaults.append(
-            {
-                "type": "json_path_equal",
-                "path": "$.code",
-                "expected": expected,
-                "source": "default_business_assertion",
-            }
-        )
-    if "success" in data and not _has_assertion_for_path(assertions, "$.success"):
-        defaults.append(
-            {
-                "type": "json_path_equal",
-                "path": "$.success",
-                "expected": True,
-                "source": "default_business_assertion",
-            }
-        )
-    return defaults
+def _is_data_assertion(assertion: dict) -> bool:
+    path = assertion.get("path") or ""
+    return isinstance(path, str) and path.startswith("$.data")

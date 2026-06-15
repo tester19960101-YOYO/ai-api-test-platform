@@ -27,6 +27,23 @@
     <el-form-item label="断言规则">
       <JsonTextarea v-model="form.assertions_json" :rows="10" />
     </el-form-item>
+    <el-form-item label="AI断言建议">
+      <el-switch v-model="form.show_ai_assertions" active-text="展示" inactive-text="隐藏" />
+      <el-input
+        v-if="form.show_ai_assertions"
+        class="readonly-json"
+        :model-value="aiSuggestionsPreview"
+        type="textarea"
+        :rows="6"
+        readonly
+      />
+    </el-form-item>
+    <el-form-item label="Swagger断言">
+      <el-input class="readonly-json" :model-value="swaggerAssertionsPreview" type="textarea" :rows="5" readonly />
+    </el-form-item>
+    <el-form-item label="融合断言预览">
+      <el-input class="readonly-json" :model-value="finalAssertionsPreview" type="textarea" :rows="8" readonly />
+    </el-form-item>
     <el-form-item label="变量">
       <JsonTextarea v-model="form.variables_json" :rows="6" />
     </el-form-item>
@@ -38,7 +55,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import { testCaseApi } from '@/api'
 import JsonTextarea from '@/components/JsonTextarea.vue'
@@ -61,8 +78,48 @@ const form = reactive({
   description: '',
   steps_json: '[]',
   assertions_json: '[]',
+  show_ai_assertions: true,
   variables_json: '{}'
 })
+
+const aiSuggestionsPreview = computed(() => {
+  const variables = safeParseObject(form.variables_json)
+  return stringifyJson(variables.ai_assertion_suggestions || { suggestions: [] })
+})
+
+const swaggerAssertionsPreview = computed(() =>
+  stringifyJson({
+    source: 'swagger',
+    rules: ['status_code', 'response required fields', 'response schema structure'],
+    description: '执行时根据接口资产 response_schema / example_response 自动生成基础断言。'
+  })
+)
+
+const finalAssertionsPreview = computed(() =>
+  stringifyJson({
+    priority: 'user > swagger > ai',
+    user_assertions: safeParseArray(form.assertions_json),
+    swagger_assertions: '执行时按接口资产生成',
+    ai_assertions: safeParseObject(form.variables_json).ai_assertion_suggestions || { suggestions: [] },
+    note: 'AI 断言仅为建议，默认不控制 pass/fail。'
+  })
+)
+
+function safeParseObject(text: string) {
+  try {
+    return parseJsonObject(text, {}) || {}
+  } catch {
+    return {}
+  }
+}
+
+function safeParseArray(text: string) {
+  try {
+    return parseJsonArray(text, []) || []
+  } catch {
+    return []
+  }
+}
 
 function syncForm(testCase: TestCase) {
   Object.assign(form, {

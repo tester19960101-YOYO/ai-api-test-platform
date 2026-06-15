@@ -6,6 +6,7 @@ import yaml
 from jinja2 import Environment as JinjaEnvironment
 from jinja2 import FileSystemLoader
 
+from app.core.assertion_engine_v2 import build_swagger_assertions, fuse_assertions, normalize_ai_suggestions, normalize_user_assertions
 from app.models.environment import Environment
 from app.models.execution_task import ExecutionTask
 from app.models.project import Project
@@ -87,6 +88,10 @@ class PytestProjectGenerator:
             "variables": test_case.variables or {},
             "steps": [self._normalize_step(step, timeout) for step in steps],
             "assertions": test_case.assertions or [],
+            "swagger_assertions": self._build_swagger_assertions(test_case),
+            "ai_assertions": self._build_ai_assertions(test_case),
+            "user_assertions": normalize_user_assertions(test_case.assertions or []),
+            "final_assertions": self._build_final_assertions(test_case),
         }
 
     def _normalize_step(self, step: Any, timeout: int) -> dict[str, Any]:
@@ -115,3 +120,20 @@ class PytestProjectGenerator:
             "cookie": variables.get("cookie") or auth_config.get("cookie") or "",
             "auth_config": auth_config,
         }
+
+    def _build_swagger_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
+        if test_case.api_endpoint is None:
+            return []
+        return build_swagger_assertions(test_case.api_endpoint)
+
+    def _build_ai_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
+        variables = test_case.variables or {}
+        return normalize_ai_suggestions(variables.get("ai_assertion_suggestions") or {})
+
+    def _build_final_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
+        fused = fuse_assertions(
+            swagger_assertions=self._build_swagger_assertions(test_case),
+            ai_assertions=self._build_ai_assertions(test_case),
+            user_assertions=normalize_user_assertions(test_case.assertions or []),
+        )
+        return fused["final_assertions"]

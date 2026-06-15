@@ -36,17 +36,19 @@ class TestcaseGeneratorAgent:
         expected_status_code: int,
         request_data: dict[str, Any],
     ) -> dict[str, Any]:
-        assertions = [{"type": "status_code", "expected": expected_status_code}]
+        assertion_suggestions = [{"type": "status_code", "expected": expected_status_code, "confidence": 0.95}]
         if expected_status_code < 400:
-            assertions.extend(
+            assertion_suggestions.extend(
                 [
                     *self._build_business_assertions(endpoint),
-                    {"type": "json_path_not_null", "path": "$"},
-                    {"type": "json_path_contains", "path": "$", "expected": self._response_keyword(endpoint)},
+                    {"type": "json_path_not_null", "path": "$", "confidence": 0.8},
+                    {"type": "json_path_contains", "path": "$", "expected": self._response_keyword(endpoint), "confidence": 0.7},
                 ]
             )
         else:
-            assertions.append({"type": "json_path_equal", "path": "$.code", "expected": expected_status_code})
+            assertion_suggestions.append(
+                {"type": "json_path_equal", "path": "$.code", "expected": expected_status_code, "confidence": 0.75}
+            )
 
         return {
             "name": f"{endpoint.name}-{title}",
@@ -59,11 +61,14 @@ class TestcaseGeneratorAgent:
                     "request": request_data,
                 }
             ],
-            "assertions": assertions,
+            "assertions": [],
             "variables": {
                 "generated_by": self.model_name,
                 "case_type": case_type,
                 "source_endpoint_id": endpoint.id,
+                "ai_assertion_suggestions": {
+                    "suggestions": assertion_suggestions,
+                },
             },
         }
 
@@ -184,11 +189,11 @@ class TestcaseGeneratorAgent:
 
         if "code" in response_example or "code" in properties:
             expected = response_example.get("code", 200)
-            assertions.append({"type": "business_code", "path": "$.code", "expected": expected})
+            assertions.append({"type": "business_code", "path": "$.code", "expected": expected, "confidence": 0.9})
         if "success" in response_example or "success" in properties:
-            assertions.append({"type": "business_success", "path": "$.success", "expected": True})
+            assertions.append({"type": "business_success", "path": "$.success", "expected": True, "confidence": 0.85})
         if "data" in response_example or "data" in properties:
-            assertions.append({"type": "json_path_not_null", "path": "$.data"})
+            assertions.append({"type": "json_path_not_null", "path": "$.data", "confidence": 0.7})
         return assertions
 
     def _copy_request(self, request_data: dict[str, Any]) -> dict[str, Any]:

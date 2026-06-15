@@ -2,7 +2,7 @@
 
 AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 mock AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试。
 
-当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已完成“鉴权配置与业务断言增强”，当前版本适合演示和继续迭代。
+当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已归档为 `v0.10.0`。第 10.1 阶段已完成“断言系统2.0融合引擎”，当前版本适合演示和继续迭代。
 
 ## 当前阶段
 
@@ -18,6 +18,7 @@ AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产
 - 第 8 阶段：MVP 基线固化与演示准备，版本为 `v0.1.0-mvp`。
 - 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
 - 第 10 阶段：鉴权配置与业务断言增强。
+- 第 10.1 阶段：断言系统2.0，融合 AI 建议、Swagger 基础断言和用户断言。
 
 ## 技术栈
 
@@ -91,6 +92,9 @@ ai-api-test-platform/
 - 执行测试时自动合并环境公共 headers、环境鉴权 headers 和用例请求 headers
 - 业务断言支持 `business_code`、`business_success`、`json_path_not_empty`，并对响应 JSON 中的 `code` / `success` 提供默认业务断言兜底
 - 执行结果保存脱敏后的请求数据、响应体、curl 命令和断言结果，避免在报告中暴露完整 token / cookie
+- 断言系统2.0支持统一断言结构、来源追踪、优先级融合、同 path 去重
+- AI 断言仅作为建议，默认不参与 pass/fail；用户断言优先级最高
+- Swagger/OpenAPI 断言作为基础层，参与 status code、required 字段和 schema 结构断言
 
 ## 暂未实现内容
 
@@ -211,6 +215,36 @@ POST /api/v1/projects/{project_id}/documents/import-url
 ```
 
 当前不支持自动 token 刷新、登录页跳转、验证码、SSO 或浏览器自动化登录。
+
+## 第 10.1 阶段断言系统2.0
+
+断言统一结构：
+
+```json
+{
+  "id": "string",
+  "source": "swagger | ai | user",
+  "type": "status_code | json_path | business_code",
+  "path": "$.code",
+  "operator": "== | != | exists | contains",
+  "expected": 200,
+  "priority": 1,
+  "enabled": true
+}
+```
+
+融合规则：
+
+```text
+user > swagger > ai
+```
+
+- 用户断言优先级最高。
+- Swagger 断言作为基础层参与执行。
+- AI 断言只作为建议层，默认 `enabled=false`，不直接决定 pass/fail。
+- 同一路径断言去重时保留最高优先级。
+- `business_code` 支持 `success_codes` 和 `success_expression`，不再写死 1。
+- `$.data` 相关断言仅在业务成功后执行。
 
 ## 验证方式
 

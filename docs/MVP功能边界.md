@@ -39,6 +39,7 @@ MVP 第一版实现一个可演示、可继续迭代的 AI 接口自动化测试
 - 第 8 阶段：MVP 固化为 `v0.1.0-mvp`。
 - 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
 - 第 10 阶段：鉴权配置与业务断言增强。
+- 第 10.1 阶段：断言系统 2.0，完成 AI 建议、Swagger 基础断言、用户断言的融合执行。
 
 ## 第 9 阶段已完成内容
 
@@ -74,6 +75,19 @@ MVP 第一版实现一个可演示、可继续迭代的 AI 接口自动化测试
 - 执行结果保存请求参数、响应体、curl 命令和断言结果。
 - 执行报告页展示断言结果，并继续支持请求参数、响应体、curl 展开和复制。
 - 报告与日志中不保存完整 token / cookie，仅保存脱敏后的请求头和 curl。
+
+## 第 10.1 阶段已完成内容
+
+- 新增 `backend/app/core/assertion_engine_v2.py` 断言融合引擎。
+- 统一断言结构，支持 `source`、`type`、`path`、`operator`、`expected`、`priority`、`enabled`。
+- 支持三层断言来源：用户断言、Swagger/OpenAPI 基础断言、mock AI 断言建议。
+- 断言融合优先级为：用户断言 > Swagger/OpenAPI 断言 > AI 建议断言。
+- 同一路径断言去重时保留最高优先级断言，最终执行结果可追溯断言来源。
+- `business_code` 不再写死为 1，改为支持 `success_codes` 或 `success_expression`。
+- `$.data` 相关 JSONPath 校验仅在业务成功后执行，避免 401/500 或业务失败时误判。
+- mock AI 只生成带 `confidence` 的结构化断言建议，默认不控制 pass/fail。
+- 测试用例页面可查看 AI 断言建议、Swagger 断言、用户断言和最终融合断言预览。
+- 接口详情页可查看 Swagger 基础断言预览。
 
 ## 后续阶段
 

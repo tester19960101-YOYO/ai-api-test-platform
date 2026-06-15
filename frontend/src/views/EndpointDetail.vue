@@ -43,6 +43,9 @@
       <el-form-item label="response_json">
         <JsonTextarea :model-value="stringifyJson(endpoint.response_schema)" :rows="6" />
       </el-form-item>
+      <el-form-item label="swagger_assertions">
+        <JsonTextarea :model-value="swaggerAssertionPreview" :rows="6" />
+      </el-form-item>
       <el-form-item label="examples_json">
         <JsonTextarea :model-value="stringifyJson({ request: endpoint.example_request, response: endpoint.example_response })" :rows="6" />
       </el-form-item>
@@ -52,7 +55,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { endpointApi } from '@/api'
@@ -72,6 +75,24 @@ const form = reactive({
   auth_required: false,
   description: ''
 })
+
+const swaggerAssertionPreview = computed(() => {
+  if (!endpoint.value) return ''
+  const responseSchema = endpoint.value.response_schema || {}
+  const properties = isRecord(responseSchema) && isRecord(responseSchema.properties) ? responseSchema.properties : {}
+  return stringifyJson({
+    source: 'swagger',
+    assertions: [
+      { type: 'status_code', operator: '==', expected: 200 },
+      ...('code' in properties ? [{ type: 'business_code', path: '$.code', operator: '==', success_codes: [200, 0] }] : []),
+      ...('data' in properties ? [{ type: 'json_path', path: '$.data', operator: 'exists', enabled_when: 'business_success' }] : [])
+    ]
+  })
+})
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 async function loadEndpoint() {
   endpoint.value = await endpointApi.detail(Number(route.params.id))

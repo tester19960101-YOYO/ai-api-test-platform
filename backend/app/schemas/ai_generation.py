@@ -21,6 +21,7 @@ class GeneratedAssertion(BaseModel):
     type: AssertionType
     path: str | None = None
     expected: Any | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
     @model_validator(mode="after")
     def validate_assertion_fields(self) -> "GeneratedAssertion":
@@ -52,7 +53,7 @@ class GeneratedCase(BaseModel):
     description: str | None = None
     priority: str = Field(default="medium", max_length=32)
     steps: list[GeneratedStep] = Field(..., min_length=1)
-    assertions: list[GeneratedAssertion] = Field(..., min_length=1)
+    assertions: list[GeneratedAssertion] = Field(default_factory=list)
     variables: dict[str, Any] | None = None
 
 
