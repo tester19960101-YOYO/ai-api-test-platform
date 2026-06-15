@@ -2,11 +2,11 @@
 
 AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 mock AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试。
 
-当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`，当前版本适合演示和继续迭代。
+当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已完成“鉴权配置与业务断言增强”，当前版本适合演示和继续迭代。
 
 ## 当前阶段
 
-已完成第 1-9 阶段：
+已完成第 1-10 阶段：
 
 - 第 1 阶段：项目骨架、后端基础工程、数据库表、SQLAlchemy models、健康检查、基础文档。
 - 第 2 阶段：项目、环境、接口资产、测试用例基础 CRUD。
@@ -17,6 +17,7 @@ AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产
 - 第 7 阶段：MVP 联调验收与缺陷修复。
 - 第 8 阶段：MVP 基线固化与演示准备，版本为 `v0.1.0-mvp`。
 - 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
+- 第 10 阶段：鉴权配置与业务断言增强。
 
 ## 技术栈
 
@@ -86,6 +87,10 @@ ai-api-test-platform/
 - Pytest + Requests 执行引擎、pytest-html 报告、执行日志
 - Vue3 前端 MVP 页面和接口联调入口
 - 执行报告页支持多选测试用例执行，并可展开单条结果查看请求参数 JSON、响应体 JSON 和 curl 命令，支持复制
+- 环境配置支持 `auth_type`、`token`、`cookie`、公共 headers、`auth_config_json`、timeout 和 retry 配置
+- 执行测试时自动合并环境公共 headers、环境鉴权 headers 和用例请求 headers
+- 业务断言支持 `business_code`、`business_success`、`json_path_not_empty`，并对响应 JSON 中的 `code` / `success` 提供默认业务断言兜底
+- 执行结果保存脱敏后的请求数据、响应体、curl 命令和断言结果，避免在报告中暴露完整 token / cookie
 
 ## 暂未实现内容
 
@@ -188,6 +193,25 @@ POST /api/v1/projects/{project_id}/documents/import-url
 - 不会导入后自动生成测试用例。
 - 不支持自动登录、验证码、SSO 或浏览器自动化登录；如果 Cookie 过期，需要用户重新复制 Cookie。
 
+## 第 10 阶段鉴权与业务断言
+
+环境配置仍使用环境管理接口保存，不新增 API 路径。新增配置约定保存在 `environment.variables`：
+
+- `auth_type`：`none`、`bearer`、`token`、`cookie`、`custom`
+- `token`：执行测试时写入 `Authorization` 或自定义 token header
+- `cookie`：执行测试时写入 `Cookie`
+- `auth_config_json`：可配置 `token_header`、`token_prefix`、`headers` 等扩展鉴权信息
+- `timeout_seconds`：环境默认超时时间
+- `retry_count`：环境默认重试次数
+
+执行请求头合并优先级：
+
+```text
+环境公共 headers < 环境鉴权 headers < 测试用例请求 headers
+```
+
+当前不支持自动 token 刷新、登录页跳转、验证码、SSO 或浏览器自动化登录。
+
 ## 验证方式
 
 后端：
@@ -230,8 +254,7 @@ npm run dev
 
 ## 下一阶段建议
 
-- 第 10 阶段：真实 AI 大模型接入
-- 第 11 阶段：接口依赖关系与链路用例
-- 第 12 阶段：鉴权、token、cookie 增强
+- 第 11 阶段：真实 AI 大模型接入
+- 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强
 - 第 14 阶段：CI/CD、定时任务与权限系统

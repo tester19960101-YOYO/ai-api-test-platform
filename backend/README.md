@@ -2,7 +2,7 @@
 
 ## 后端简介
 
-这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析。
+这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强。
 
 ## 技术栈
 
@@ -89,6 +89,10 @@ GET /api/v1/health
 - 第 9 阶段多形态接口输入预览与保存
 - mock AI 用例生成
 - Pytest + Requests 基础执行引擎
+- 环境级 token / cookie / header 鉴权配置
+- 执行请求头合并
+- 业务断言兜底
+- 执行结果保存脱敏请求数据、响应体、curl 和断言结果
 
 ## 第 9 阶段新增接口
 
@@ -120,6 +124,15 @@ POST /api/v1/projects/{project_id}/documents/import-url
 POST /api/v1/executions/run
 ```
 
+第 10 阶段执行增强：
+
+- 环境公共 headers、环境鉴权 headers、测试用例请求 headers 自动合并。
+- 合并优先级：环境公共 headers < 环境鉴权 headers < 测试用例请求 headers。
+- 支持 `business_code`、`business_success`、`json_path_not_empty`。
+- 响应包含 `code` 或 `success` 时会自动补充默认业务断言。
+- 非 JSON 响应保存原始文本和 JSON 解析错误提示。
+- 报告和日志不输出完整 token / cookie。
+
 生成路径：
 
 - 测试工程：`storage/generated/project_{project_id}/execution_{task_id}/`
@@ -138,8 +151,7 @@ curl http://127.0.0.1:8000/api/v1/health
 
 ## 后续后端开发计划
 
-- 第 10 阶段：真实 AI 大模型接入
-- 第 11 阶段：接口依赖关系与链路用例
-- 第 12 阶段：鉴权、token、cookie 增强
+- 第 11 阶段：真实 AI 大模型接入
+- 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强
 - 第 14 阶段：CI/CD、定时任务与权限系统

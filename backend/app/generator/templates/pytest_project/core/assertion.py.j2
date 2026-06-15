@@ -5,15 +5,23 @@ from jsonpath_ng import parse
 
 def run_assertions(response, assertions: list[dict], response_time_ms: int) -> list[dict]:
     results = []
-    for assertion in assertions:
+    normalized_assertions = list(assertions or [])
+    normalized_assertions.extend(_default_business_assertions(response, normalized_assertions))
+    for assertion in normalized_assertions:
         assertion_type = assertion.get("type")
         try:
             if assertion_type == "status_code":
                 _assert_status_code(response, assertion)
+            elif assertion_type == "business_code":
+                _assert_business_code(response, assertion)
+            elif assertion_type == "business_success":
+                _assert_business_success(response, assertion)
             elif assertion_type == "json_path_equal":
                 _assert_json_path_equal(response, assertion)
             elif assertion_type == "json_path_not_null":
                 _assert_json_path_not_null(response, assertion)
+            elif assertion_type == "json_path_not_empty":
+                _assert_json_path_not_empty(response, assertion)
             elif assertion_type == "json_path_contains":
                 _assert_json_path_contains(response, assertion)
             elif assertion_type == "response_time":
@@ -38,10 +46,32 @@ def _assert_json_path_equal(response, assertion: dict) -> None:
     assert values[0] == expected, f"expected {expected}, got {values[0]}"
 
 
+def _assert_business_code(response, assertion: dict) -> None:
+    path = assertion.get("path") or "$.code"
+    expected = assertion.get("expected", 200)
+    values = _json_path_values(response, path)
+    assert values, f"business code path not found: {path}"
+    assert values[0] == expected, f"expected business code {expected}, got {values[0]}"
+
+
+def _assert_business_success(response, assertion: dict) -> None:
+    path = assertion.get("path") or "$.success"
+    expected = assertion.get("expected", True)
+    values = _json_path_values(response, path)
+    assert values, f"business success path not found: {path}"
+    assert values[0] is expected, f"expected business success {expected}, got {values[0]}"
+
+
 def _assert_json_path_not_null(response, assertion: dict) -> None:
     values = _json_path_values(response, assertion.get("path"))
     assert values, f"json path not found: {assertion.get('path')}"
     assert values[0] is not None, f"json path is null: {assertion.get('path')}"
+
+
+def _assert_json_path_not_empty(response, assertion: dict) -> None:
+    values = _json_path_values(response, assertion.get("path"))
+    assert values, f"json path not found: {assertion.get('path')}"
+    assert values[0] not in (None, "", [], {}), f"json path is empty: {assertion.get('path')}"
 
 
 def _assert_json_path_contains(response, assertion: dict) -> None:
@@ -59,3 +89,41 @@ def _assert_response_time(response_time_ms: int, assertion: dict) -> None:
 def _json_path_values(response, path: str):
     data = response.json()
     return [match.value for match in parse(path).find(data)]
+
+
+def _response_json_or_none(response):
+    try:
+        return response.json()
+    except ValueError:
+        return None
+
+
+def _has_assertion_for_path(assertions: list[dict], path: str) -> bool:
+    return any(item.get("path") == path for item in assertions if isinstance(item, dict))
+
+
+def _default_business_assertions(response, assertions: list[dict]) -> list[dict]:
+    data = _response_json_or_none(response)
+    if not isinstance(data, dict):
+        return []
+    defaults = []
+    if "code" in data and not _has_assertion_for_path(assertions, "$.code"):
+        expected = 200 if data.get("code") == 200 else 0
+        defaults.append(
+            {
+                "type": "json_path_equal",
+                "path": "$.code",
+                "expected": expected,
+                "source": "default_business_assertion",
+            }
+        )
+    if "success" in data and not _has_assertion_for_path(assertions, "$.success"):
+        defaults.append(
+            {
+                "type": "json_path_equal",
+                "path": "$.success",
+                "expected": True,
+                "source": "default_business_assertion",
+            }
+        )
+    return defaults

@@ -1,31 +1,138 @@
-from urllib.parse import urljoin
+import json
+import time
+from urllib.parse import urlencode, urljoin
 
 import requests
 
 
 class ApiClient:
-    def __init__(self, base_url: str, headers: dict | None = None, timeout: int = 10) -> None:
+    SENSITIVE_HEADERS = {"authorization", "cookie", "x-token", "token", "access-token", "x-auth-token"}
+
+    def __init__(
+        self,
+        base_url: str,
+        headers: dict | None = None,
+        auth: dict | None = None,
+        timeout: int = 10,
+        retry_count: int = 0,
+    ) -> None:
         self.base_url = base_url.rstrip("/") + "/"
         self.headers = headers or {}
+        self.auth = auth or {}
         self.timeout = timeout
+        self.retry_count = max(int(retry_count or 0), 0)
         self.session = requests.Session()
 
     def request(self, request_data: dict) -> requests.Response:
+        effective_request = self.build_effective_request_data(request_data, mask_sensitive=False)
+        retry_count = int(request_data.get("retry_count", self.retry_count) or 0)
+        last_exception = None
+        for attempt in range(retry_count + 1):
+            try:
+                return self.session.request(
+                    method=effective_request["method"],
+                    url=effective_request["url"],
+                    headers=effective_request["headers"],
+                    params=effective_request.get("query") or {},
+                    json=effective_request.get("body") if effective_request.get("body") not in ({}, None) else None,
+                    timeout=effective_request["timeout"],
+                )
+            except requests.RequestException as exc:
+                last_exception = exc
+                if attempt >= retry_count:
+                    raise
+                time.sleep(0.2)
+        raise last_exception
+
+    def build_effective_request_data(self, request_data: dict, mask_sensitive: bool = True) -> dict:
         method = request_data.get("method", "GET").upper()
         path = self._format_path(request_data.get("path", "/"), request_data.get("path_params") or {})
-        headers = dict(self.headers)
-        headers.update(request_data.get("headers") or {})
+        headers = self._merge_headers(request_data.get("headers") or {})
         timeout = request_data.get("timeout") or self.timeout
-        return self.session.request(
-            method=method,
-            url=urljoin(self.base_url, path.lstrip("/")),
-            headers=headers,
-            params=request_data.get("query") or {},
-            json=request_data.get("body") or None,
-            timeout=timeout,
-        )
+        effective = {
+            "method": method,
+            "path": path,
+            "url": urljoin(self.base_url, path.lstrip("/")),
+            "headers": self._mask_headers(headers) if mask_sensitive else headers,
+            "query": request_data.get("query") or {},
+            "path_params": request_data.get("path_params") or {},
+            "body": request_data.get("body") or {},
+            "timeout": timeout,
+            "retry_count": request_data.get("retry_count", self.retry_count) or 0,
+        }
+        effective["curl"] = self.build_curl(effective)
+        return effective
+
+    def build_curl(self, effective_request: dict) -> str:
+        url = effective_request["url"]
+        query = effective_request.get("query") or {}
+        if query:
+            separator = "&" if "?" in url else "?"
+            url = f"{url}{separator}{urlencode(query, doseq=True)}"
+        parts = [f"curl -X {effective_request['method']} {self._shell_quote(url)}"]
+        for key, value in (effective_request.get("headers") or {}).items():
+            parts.append(f"-H {self._shell_quote(f'{key}: {value}')}")
+        body = effective_request.get("body")
+        if body not in ({}, None):
+            parts.append("-H 'Content-Type: application/json'")
+            parts.append(f"--data {self._shell_quote(json.dumps(body, ensure_ascii=False))}")
+        separator = " \\" + "\n  "
+        return separator.join(parts)
 
     def _format_path(self, path: str, path_params: dict) -> str:
         for key, value in path_params.items():
             path = path.replace("{" + str(key) + "}", str(value))
         return path
+
+    def _merge_headers(self, request_headers: dict) -> dict:
+        # 合并优先级：环境公共 headers < 环境鉴权 headers < 用例请求 headers。
+        headers = dict(self.headers)
+        auth_headers = self._auth_headers()
+        headers.update(auth_headers)
+        headers.update(request_headers or {})
+
+        env_cookie = auth_headers.get("Cookie")
+        case_cookie = (request_headers or {}).get("Cookie")
+        if env_cookie and case_cookie:
+            headers["Cookie"] = f"{env_cookie}; {case_cookie}"
+        return headers
+
+    def _auth_headers(self) -> dict:
+        auth_type = str(self.auth.get("auth_type") or "none").lower()
+        auth_config = self.auth.get("auth_config") or {}
+        token = self.auth.get("token") or auth_config.get("token")
+        cookie = self.auth.get("cookie") or auth_config.get("cookie")
+        headers = {}
+
+        custom_headers = auth_config.get("headers")
+        if isinstance(custom_headers, dict):
+            headers.update(custom_headers)
+
+        if token:
+            header_name = auth_config.get("token_header") or auth_config.get("header_name") or "Authorization"
+            prefix = auth_config.get("token_prefix")
+            if prefix is None:
+                prefix = "Bearer" if auth_type in {"bearer", "token"} else ""
+            headers[header_name] = f"{prefix} {token}".strip()
+        if cookie:
+            headers["Cookie"] = str(cookie).replace("\r", "").replace("\n", "").strip()
+        return headers
+
+    def _mask_headers(self, headers: dict) -> dict:
+        masked = {}
+        for key, value in (headers or {}).items():
+            if str(key).lower() in self.SENSITIVE_HEADERS:
+                masked[key] = self._mask_value(str(value))
+            else:
+                masked[key] = value
+        return masked
+
+    def _mask_value(self, value: str) -> str:
+        if not value:
+            return ""
+        if len(value) <= 12:
+            return "***"
+        return f"{value[:6]}***{value[-4:]}"
+
+    def _shell_quote(self, value: str) -> str:
+        return "'" + value.replace("'", "'\\''") + "'"

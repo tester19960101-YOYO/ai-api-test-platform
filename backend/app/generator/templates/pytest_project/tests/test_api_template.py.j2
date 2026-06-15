@@ -22,7 +22,9 @@ CASES = load_yaml(ROOT / "cases" / "cases.yaml") or []
 CLIENT = ApiClient(
     base_url=ENV["base_url"],
     headers=ENV.get("headers") or {},
+    auth=ENV.get("auth") or {},
     timeout=ENV.get("timeout") or 10,
+    retry_count=ENV.get("retry_count") or 0,
 )
 
 
@@ -40,10 +42,11 @@ def test_api_case(case):
     assertion_results = []
     error_message = None
     status = "passed"
-    request_data = (case.get("steps") or [{}])[0].get("request") or {}
+    raw_request_data = (case.get("steps") or [{}])[0].get("request") or {}
+    request_data = CLIENT.build_effective_request_data(raw_request_data, mask_sensitive=True)
 
     try:
-        response = CLIENT.request(request_data)
+        response = CLIENT.request(raw_request_data)
         response_time_ms = int((time.perf_counter() - started) * 1000)
         assertion_results = run_assertions(response, case.get("assertions") or [], response_time_ms)
         if any(not item["passed"] for item in assertion_results):
@@ -61,7 +64,11 @@ def test_api_case(case):
             try:
                 response_data = response.json()
             except ValueError:
-                response_data = {"text": response.text}
+                response_data = {
+                    "raw_text": response.text,
+                    "content_type": response.headers.get("Content-Type"),
+                    "json_parse_error": "response is not valid JSON",
+                }
         append_result(
             {
                 "test_case_id": case.get("id"),

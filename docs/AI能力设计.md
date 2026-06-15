@@ -36,11 +36,16 @@ backend/app/parsers/html_ai_parser.py
 当前生成断言：
 
 - `status_code`
+- `business_code`
+- `business_success`
 - `json_path_equal`
 - `json_path_not_null`
+- `json_path_not_empty`
 - `json_path_contains`
 
 执行引擎额外支持 `response_time`。
+
+第 10 阶段后，mock AI 用例生成会根据接口响应示例或响应 Schema 尽量补充业务断言，例如 `$.code == 200`、`$.success == true`、`$.data != null`。当前仍为 mock 规则生成，不调用真实大模型。
 
 ## 第 9 阶段 AI 辅助解析边界
 
@@ -73,6 +78,6 @@ backend/app/parsers/html_ai_parser.py
 
 ## 后续 AI 能力
 
-- 第 10 阶段：真实 AI 大模型接入
-- 第 11 阶段：接口依赖关系与链路用例
+- 第 11 阶段：真实 AI 大模型接入
+- 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强

@@ -12,6 +12,11 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="环境名称" width="160" />
       <el-table-column prop="base_url" label="base_url" min-width="260" show-overflow-tooltip />
+      <el-table-column label="鉴权类型" width="120">
+        <template #default="{ row }">
+          <el-tag>{{ getAuthType(row) }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="is_default" label="默认" width="90">
         <template #default="{ row }">
           <el-tag :type="row.is_default ? 'success' : 'info'">{{ row.is_default ? '是' : '否' }}</el-tag>
@@ -45,6 +50,26 @@
         </el-form-item>
         <el-form-item label="headers_json">
           <JsonTextarea v-model="form.headers_json" :rows="5" />
+        </el-form-item>
+        <el-form-item label="auth_type">
+          <el-select v-model="form.auth_type" style="width: 220px">
+            <el-option label="none" value="none" />
+            <el-option label="bearer token" value="bearer" />
+            <el-option label="custom token header" value="token" />
+            <el-option label="cookie" value="cookie" />
+            <el-option label="custom headers" value="custom" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="token">
+          <el-input v-model="form.token" show-password placeholder="访问令牌，执行时自动写入 Authorization 或自定义 header" />
+        </el-form-item>
+        <el-form-item label="cookie">
+          <el-input
+            v-model="form.cookie"
+            type="textarea"
+            :rows="3"
+            placeholder="JSESSIONID=xxxx; SESSION=yyyy; token=zzzz"
+          />
         </el-form-item>
         <el-form-item label="auth_config_json">
           <JsonTextarea v-model="form.auth_config_json" :rows="4" />
@@ -87,6 +112,9 @@ const form = reactive({
   is_default: false,
   status: 'active',
   headers_json: '{}',
+  auth_type: 'none',
+  token: '',
+  cookie: '',
   auth_config_json: '{}',
   timeout_seconds: 10,
   retry_count: 0
@@ -110,6 +138,9 @@ function openCreate() {
     is_default: false,
     status: 'active',
     headers_json: '{}',
+    auth_type: 'none',
+    token: '',
+    cookie: '',
     auth_config_json: '{}',
     timeout_seconds: 10,
     retry_count: 0
@@ -126,6 +157,9 @@ function openEdit(environment: Environment) {
     is_default: environment.is_default,
     status: environment.status,
     headers_json: stringifyJson(environment.headers || {}),
+    auth_type: String(variables.auth_type || 'none'),
+    token: String(variables.token || ''),
+    cookie: String(variables.cookie || ''),
     auth_config_json: stringifyJson(variables.auth_config_json || {}),
     timeout_seconds: Number(variables.timeout_seconds || 10),
     retry_count: Number(variables.retry_count || 0)
@@ -142,6 +176,9 @@ async function submitEnvironment() {
       status: form.status,
       headers: parseJsonObject(form.headers_json, {}),
       variables: {
+        auth_type: form.auth_type,
+        token: form.token,
+        cookie: form.cookie,
         auth_config_json: parseJsonObject(form.auth_config_json, {}),
         timeout_seconds: form.timeout_seconds,
         retry_count: form.retry_count
@@ -158,6 +195,10 @@ async function submitEnvironment() {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : 'JSON 格式错误')
   }
+}
+
+function getAuthType(environment: Environment) {
+  return String(environment.variables?.auth_type || 'none')
 }
 
 async function removeEnvironment(environment: Environment) {

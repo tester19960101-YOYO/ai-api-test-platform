@@ -2,7 +2,7 @@
 
 ## 前端简介
 
-这是 AI API Test Platform / AI 接口自动化测试平台的前端工程。当前已完成 Vue3 前端 MVP 页面，并在第 9 阶段增强接口导入页。
+这是 AI API Test Platform / AI 接口自动化测试平台的前端工程。当前已完成 Vue3 前端 MVP 页面，并在第 9 阶段增强接口导入页，在第 10 阶段增强环境配置页和执行报告页。
 
 ## 当前阶段说明
 
@@ -16,6 +16,8 @@
 - 测试用例管理
 - 执行测试
 - 查看执行结果和报告
+- 配置环境级 token / cookie / header 鉴权
+- 查看业务断言结果和脱敏 curl
 
 当前仍为 mock AI，不接真实大模型。
 
@@ -82,6 +84,31 @@ npm run build
 - AI 用例生成页
 - 测试用例管理页
 - 执行结果 / 测试报告页
+
+## 第 10 阶段环境与报告页
+
+环境配置页支持：
+
+- `auth_type`
+- Token
+- Cookie
+- `headers_json`
+- `auth_config_json`
+- `timeout_seconds`
+- `retry_count`
+
+执行报告页支持：
+
+- 多选测试用例执行。
+- 展开单条执行结果。
+- 查看并复制请求参数 JSON、响应体 JSON、curl 命令和断言结果。
+- 使用后端保存的脱敏 curl，不展示完整 token / cookie。
+
+边界：
+
+- 前端不直接请求被测接口。
+- 前端不直接执行 Pytest。
+- 当前不支持自动 token 刷新、自动登录、验证码、SSO 或浏览器自动化登录。
 
 ## 第 9 阶段接口导入页
 

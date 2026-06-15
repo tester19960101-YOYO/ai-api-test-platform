@@ -36,12 +36,17 @@ class PytestProjectGenerator:
             shutil.rmtree(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        cases = [self._build_case_data(test_case, timeout) for test_case in test_cases]
+        environment_variables = environment.variables or {}
+        context_timeout = int(environment_variables.get("timeout_seconds") or timeout)
+        retry_count = int(environment_variables.get("retry_count") or 0)
+        cases = [self._build_case_data(test_case, context_timeout) for test_case in test_cases]
         context = {
             "project": project,
             "environment": environment,
             "task": task,
-            "timeout": timeout,
+            "timeout": context_timeout,
+            "auth": self._build_auth_config(environment),
+            "retry_count": retry_count,
             "cases": cases,
             "cases_yaml": yaml.safe_dump(cases, allow_unicode=True, sort_keys=False),
         }
@@ -98,4 +103,15 @@ class PytestProjectGenerator:
         return {
             "name": step.get("name") or "request",
             "request": request,
+        }
+
+    def _build_auth_config(self, environment: Environment) -> dict[str, Any]:
+        variables = environment.variables or {}
+        raw_auth_config = variables.get("auth_config_json") or {}
+        auth_config = raw_auth_config if isinstance(raw_auth_config, dict) else {}
+        return {
+            "auth_type": variables.get("auth_type") or auth_config.get("auth_type") or "none",
+            "token": variables.get("token") or auth_config.get("token") or "",
+            "cookie": variables.get("cookie") or auth_config.get("cookie") or "",
+            "auth_config": auth_config,
         }

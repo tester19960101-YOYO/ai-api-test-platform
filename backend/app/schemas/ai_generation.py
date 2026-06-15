@@ -5,7 +5,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.schemas.test_case import TestCaseRead
 
 
-AssertionType = Literal["status_code", "json_path_equal", "json_path_not_null", "json_path_contains"]
+AssertionType = Literal[
+    "status_code",
+    "business_code",
+    "business_success",
+    "json_path_equal",
+    "json_path_not_null",
+    "json_path_not_empty",
+    "json_path_contains",
+]
 CaseType = Literal["normal", "exception", "boundary", "auth"]
 
 
@@ -18,9 +26,9 @@ class GeneratedAssertion(BaseModel):
     def validate_assertion_fields(self) -> "GeneratedAssertion":
         if self.type == "status_code" and not isinstance(self.expected, int):
             raise ValueError("status_code assertion requires integer expected")
-        if self.type.startswith("json_path") and not self.path:
+        if (self.type.startswith("json_path") or self.type.startswith("business_")) and not self.path:
             raise ValueError("json_path assertion requires path")
-        if self.type in {"json_path_equal", "json_path_contains"} and self.expected is None:
+        if self.type in {"business_code", "business_success", "json_path_equal", "json_path_contains"} and self.expected is None:
             raise ValueError(f"{self.type} assertion requires expected")
         return self
 

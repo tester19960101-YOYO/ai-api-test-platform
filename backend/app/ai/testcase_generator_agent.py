@@ -40,6 +40,7 @@ class TestcaseGeneratorAgent:
         if expected_status_code < 400:
             assertions.extend(
                 [
+                    *self._build_business_assertions(endpoint),
                     {"type": "json_path_not_null", "path": "$"},
                     {"type": "json_path_contains", "path": "$", "expected": self._response_keyword(endpoint)},
                 ]
@@ -174,6 +175,21 @@ class TestcaseGeneratorAgent:
             if isinstance(properties, dict) and properties:
                 return next(iter(properties.keys()))
         return "success"
+
+    def _build_business_assertions(self, endpoint: ApiEndpoint) -> list[dict[str, Any]]:
+        assertions: list[dict[str, Any]] = []
+        response_example = endpoint.example_response if isinstance(endpoint.example_response, dict) else {}
+        response_schema = endpoint.response_schema if isinstance(endpoint.response_schema, dict) else {}
+        properties = response_schema.get("properties") if isinstance(response_schema.get("properties"), dict) else {}
+
+        if "code" in response_example or "code" in properties:
+            expected = response_example.get("code", 200)
+            assertions.append({"type": "business_code", "path": "$.code", "expected": expected})
+        if "success" in response_example or "success" in properties:
+            assertions.append({"type": "business_success", "path": "$.success", "expected": True})
+        if "data" in response_example or "data" in properties:
+            assertions.append({"type": "json_path_not_null", "path": "$.data"})
+        return assertions
 
     def _copy_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
         return {

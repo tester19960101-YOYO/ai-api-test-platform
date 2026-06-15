@@ -84,6 +84,14 @@
               </div>
               <pre class="code-block curl-block">{{ buildCurl(row) }}</pre>
             </div>
+
+            <div class="detail-card detail-card-wide">
+              <div class="detail-card-header">
+                <strong>断言结果</strong>
+                <el-button size="small" @click="copyText(formatJson(row.assertion_result), '断言结果')">复制</el-button>
+              </div>
+              <pre class="code-block">{{ formatJson(row.assertion_result) }}</pre>
+            </div>
           </div>
         </template>
       </el-table-column>
@@ -152,6 +160,9 @@ function formatJson(value: unknown) {
 
 function buildCurl(row: ExecutionResult) {
   const request = row.request_data || {}
+  if (typeof request.curl === 'string' && request.curl) {
+    return request.curl
+  }
   const environment = environments.value.find((item) => item.id === form.environment_id)
   const baseUrl = (environment?.base_url || '').replace(/\/+$/, '')
   const path = String(request.path || '/')
