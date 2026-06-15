@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from app.core.assertion_dsl import parse_assertion_dsl
+
 
 SOURCE_PRIORITY = {
     "user": 1,
@@ -40,6 +42,8 @@ def build_assertion(assertion: dict[str, Any], source: str, default_priority: in
         normalized["success_expression"] = assertion["success_expression"]
     if "confidence" in assertion:
         normalized["confidence"] = assertion["confidence"]
+    if "dsl" in assertion:
+        normalized["dsl"] = assertion["dsl"]
     return normalized
 
 
@@ -107,16 +111,28 @@ def build_swagger_assertions(endpoint: Any, success_codes: list[int] | None = No
 def normalize_ai_suggestions(raw: Any) -> list[dict[str, Any]]:
     if not isinstance(raw, dict):
         return []
-    suggestions = raw.get("suggestions")
+    suggestions = raw.get("assertions") or raw.get("suggestions")
     if not isinstance(suggestions, list):
         return []
-    return [build_assertion(_legacy_to_v2(item), "ai") for item in suggestions if isinstance(item, dict)]
+    normalized: list[dict[str, Any]] = []
+    for item in suggestions:
+        if isinstance(item, str):
+            normalized.append(build_assertion(parse_assertion_dsl(item, source="ai", enabled=False), "ai"))
+        elif isinstance(item, dict):
+            normalized.append(build_assertion(_legacy_to_v2(item), "ai"))
+    return normalized
 
 
 def normalize_user_assertions(raw: Any) -> list[dict[str, Any]]:
     if not isinstance(raw, list):
         return []
-    return [build_assertion(_legacy_to_v2(item), "user") for item in raw if isinstance(item, dict)]
+    normalized: list[dict[str, Any]] = []
+    for item in raw:
+        if isinstance(item, str):
+            normalized.append(build_assertion(parse_assertion_dsl(item, source="user", enabled=True), "user"))
+        elif isinstance(item, dict):
+            normalized.append(build_assertion(_legacy_to_v2(item), "user"))
+    return normalized
 
 
 def fuse_assertions(

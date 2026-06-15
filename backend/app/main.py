@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.assertion_api import router as assertion_router
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(api_router)
+    app.include_router(assertion_router, prefix="/api", tags=["assertion"])
     return app
 
 

@@ -24,25 +24,12 @@
     <el-form-item label="请求参数">
       <JsonTextarea v-model="form.steps_json" :rows="10" />
     </el-form-item>
-    <el-form-item label="断言规则">
-      <JsonTextarea v-model="form.assertions_json" :rows="10" />
-    </el-form-item>
-    <el-form-item label="AI断言建议">
-      <el-switch v-model="form.show_ai_assertions" active-text="展示" inactive-text="隐藏" />
-      <el-input
-        v-if="form.show_ai_assertions"
-        class="readonly-json"
-        :model-value="aiSuggestionsPreview"
-        type="textarea"
-        :rows="6"
-        readonly
+    <el-form-item label="断言DSL">
+      <AssertionDslBuilder
+        v-model="form.assertions_dsl"
+        :ai-assertions="aiAssertions"
+        :swagger-assertions="swaggerAssertions"
       />
-    </el-form-item>
-    <el-form-item label="Swagger断言">
-      <el-input class="readonly-json" :model-value="swaggerAssertionsPreview" type="textarea" :rows="5" readonly />
-    </el-form-item>
-    <el-form-item label="融合断言预览">
-      <el-input class="readonly-json" :model-value="finalAssertionsPreview" type="textarea" :rows="8" readonly />
     </el-form-item>
     <el-form-item label="变量">
       <JsonTextarea v-model="form.variables_json" :rows="6" />
@@ -58,6 +45,7 @@ import { ElMessage } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
 
 import { testCaseApi } from '@/api'
+import AssertionDslBuilder from '@/components/AssertionDslBuilder.vue'
 import JsonTextarea from '@/components/JsonTextarea.vue'
 import type { TestCase } from '@/types'
 import { parseJsonArray, parseJsonObject, stringifyJson } from '@/utils/json'
@@ -77,33 +65,24 @@ const form = reactive({
   status: 'draft',
   description: '',
   steps_json: '[]',
-  assertions_json: '[]',
-  show_ai_assertions: true,
+  assertions_dsl: [] as string[],
   variables_json: '{}'
 })
 
-const aiSuggestionsPreview = computed(() => {
+const aiAssertions = computed(() => {
   const variables = safeParseObject(form.variables_json)
-  return stringifyJson(variables.ai_assertion_suggestions || { suggestions: [] })
+  const current = variables.ai_assertion_dsl
+  if (Array.isArray(current)) {
+    return current.filter((item): item is string => typeof item === 'string')
+  }
+  const legacy = variables.ai_assertion_suggestions
+  if (isRecord(legacy) && Array.isArray(legacy.suggestions)) {
+    return legacy.suggestions.map(assertionToDsl).filter(Boolean)
+  }
+  return []
 })
 
-const swaggerAssertionsPreview = computed(() =>
-  stringifyJson({
-    source: 'swagger',
-    rules: ['status_code', 'response required fields', 'response schema structure'],
-    description: '执行时根据接口资产 response_schema / example_response 自动生成基础断言。'
-  })
-)
-
-const finalAssertionsPreview = computed(() =>
-  stringifyJson({
-    priority: 'user > swagger > ai',
-    user_assertions: safeParseArray(form.assertions_json),
-    swagger_assertions: '执行时按接口资产生成',
-    ai_assertions: safeParseObject(form.variables_json).ai_assertion_suggestions || { suggestions: [] },
-    note: 'AI 断言仅为建议，默认不控制 pass/fail。'
-  })
-)
+const swaggerAssertions = computed(() => ['status_code == 200', '$.code == 200', '$.data != null'])
 
 function safeParseObject(text: string) {
   try {
@@ -121,6 +100,39 @@ function safeParseArray(text: string) {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function assertionToDsl(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (!isRecord(value)) {
+    return ''
+  }
+  const type = String(value.type || 'json_path')
+  const path = typeof value.path === 'string' ? value.path : '$.code'
+  const expected = value.expected
+  if (type === 'status_code') {
+    return `status_code == ${expected ?? 200}`
+  }
+  if (type === 'business_code' || path === '$.code') {
+    return `${path} == ${expected ?? 200}`
+  }
+  if (type === 'json_path_not_null') {
+    return `${path} != null`
+  }
+  if (type === 'json_path_contains') {
+    return `${path} contains ${expected ?? ''}`.trim()
+  }
+  const operator = typeof value.operator === 'string' ? value.operator : '=='
+  if (operator === 'exists') {
+    return `${path} exists`
+  }
+  return `${path} ${operator} ${expected ?? 'null'}`
+}
+
 function syncForm(testCase: TestCase) {
   Object.assign(form, {
     name: testCase.name,
@@ -128,7 +140,7 @@ function syncForm(testCase: TestCase) {
     status: testCase.status,
     description: testCase.description || '',
     steps_json: stringifyJson(testCase.steps || []),
-    assertions_json: stringifyJson(testCase.assertions || []),
+    assertions_dsl: (testCase.assertions || []).map(assertionToDsl).filter(Boolean),
     variables_json: stringifyJson(testCase.variables || {})
   })
 }
@@ -142,7 +154,7 @@ async function save() {
       status: form.status,
       description: form.description,
       steps: parseJsonArray(form.steps_json, []),
-      assertions: parseJsonArray(form.assertions_json, []),
+      assertions: form.assertions_dsl,
       variables: parseJsonObject(form.variables_json, {})
     })
     ElMessage.success('保存成功')

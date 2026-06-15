@@ -203,3 +203,12 @@ export interface ExecutionRunResponse {
   stdout: string
   stderr: string
 }
+
+export interface AssertionParseResult {
+  dsl: string
+  assertion: Record<string, unknown>
+}
+
+export interface AssertionToDslResult {
+  dsl: string | string[]
+}

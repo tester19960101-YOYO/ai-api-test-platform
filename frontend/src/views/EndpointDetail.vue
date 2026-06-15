@@ -43,8 +43,10 @@
       <el-form-item label="response_json">
         <JsonTextarea :model-value="stringifyJson(endpoint.response_schema)" :rows="6" />
       </el-form-item>
-      <el-form-item label="swagger_assertions">
-        <JsonTextarea :model-value="swaggerAssertionPreview" :rows="6" />
+      <el-form-item label="Swagger断言DSL">
+        <div class="dsl-list">
+          <el-tag v-for="item in swaggerAssertionPreview" :key="item" type="info">{{ item }}</el-tag>
+        </div>
       </el-form-item>
       <el-form-item label="examples_json">
         <JsonTextarea :model-value="stringifyJson({ request: endpoint.example_request, response: endpoint.example_response })" :rows="6" />
@@ -77,17 +79,14 @@ const form = reactive({
 })
 
 const swaggerAssertionPreview = computed(() => {
-  if (!endpoint.value) return ''
+  if (!endpoint.value) return []
   const responseSchema = endpoint.value.response_schema || {}
   const properties = isRecord(responseSchema) && isRecord(responseSchema.properties) ? responseSchema.properties : {}
-  return stringifyJson({
-    source: 'swagger',
-    assertions: [
-      { type: 'status_code', operator: '==', expected: 200 },
-      ...('code' in properties ? [{ type: 'business_code', path: '$.code', operator: '==', success_codes: [200, 0] }] : []),
-      ...('data' in properties ? [{ type: 'json_path', path: '$.data', operator: 'exists', enabled_when: 'business_success' }] : [])
-    ]
-  })
+  return [
+    'status_code == 200',
+    ...('code' in properties ? ['$.code == 200'] : []),
+    ...('data' in properties ? ['$.data != null'] : [])
+  ]
 })
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -118,3 +117,11 @@ async function saveEndpoint() {
 
 onMounted(loadEndpoint)
 </script>
+
+<style scoped>
+.dsl-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+</style>

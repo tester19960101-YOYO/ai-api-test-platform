@@ -2,6 +2,8 @@ import http, { request } from './http'
 
 import type {
   AiGenerationResult,
+  AssertionParseResult,
+  AssertionToDslResult,
   ApiDocumentImportResult,
   ApiEndpoint,
   DocumentImportUrlRequest,
@@ -68,4 +70,10 @@ export const aiApi = {
 export const executionApi = {
   run: (data: { project_id: number; environment_id: number; case_ids?: number[]; timeout?: number }) =>
     request<ExecutionRunResponse>(http.post('/executions/run', data))
+}
+
+export const assertionApi = {
+  parse: (dsl: string) => request<AssertionParseResult>(http.post('/assertion/parse', { dsl })),
+  toDsl: (assertion: Record<string, unknown> | unknown[]) =>
+    request<AssertionToDslResult>(http.post('/assertion/to-dsl', { assertion }))
 }

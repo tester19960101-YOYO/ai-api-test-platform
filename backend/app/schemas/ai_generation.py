@@ -1,37 +1,11 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.test_case import TestCaseRead
 
 
-AssertionType = Literal[
-    "status_code",
-    "business_code",
-    "business_success",
-    "json_path_equal",
-    "json_path_not_null",
-    "json_path_not_empty",
-    "json_path_contains",
-]
 CaseType = Literal["normal", "exception", "boundary", "auth"]
-
-
-class GeneratedAssertion(BaseModel):
-    type: AssertionType
-    path: str | None = None
-    expected: Any | None = None
-    confidence: float | None = Field(default=None, ge=0, le=1)
-
-    @model_validator(mode="after")
-    def validate_assertion_fields(self) -> "GeneratedAssertion":
-        if self.type == "status_code" and not isinstance(self.expected, int):
-            raise ValueError("status_code assertion requires integer expected")
-        if (self.type.startswith("json_path") or self.type.startswith("business_")) and not self.path:
-            raise ValueError("json_path assertion requires path")
-        if self.type in {"business_code", "business_success", "json_path_equal", "json_path_contains"} and self.expected is None:
-            raise ValueError(f"{self.type} assertion requires expected")
-        return self
 
 
 class GeneratedStep(BaseModel):
@@ -53,7 +27,7 @@ class GeneratedCase(BaseModel):
     description: str | None = None
     priority: str = Field(default="medium", max_length=32)
     steps: list[GeneratedStep] = Field(..., min_length=1)
-    assertions: list[GeneratedAssertion] = Field(default_factory=list)
+    assertions: list[str] = Field(default_factory=list)
     variables: dict[str, Any] | None = None
 
 

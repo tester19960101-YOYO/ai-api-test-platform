@@ -36,19 +36,17 @@ class TestcaseGeneratorAgent:
         expected_status_code: int,
         request_data: dict[str, Any],
     ) -> dict[str, Any]:
-        assertion_suggestions = [{"type": "status_code", "expected": expected_status_code, "confidence": 0.95}]
+        assertion_suggestions = [f"status_code == {expected_status_code}"]
         if expected_status_code < 400:
             assertion_suggestions.extend(
                 [
                     *self._build_business_assertions(endpoint),
-                    {"type": "json_path_not_null", "path": "$", "confidence": 0.8},
-                    {"type": "json_path_contains", "path": "$", "expected": self._response_keyword(endpoint), "confidence": 0.7},
+                    "$.data exists",
+                    f"$.msg contains {self._response_keyword(endpoint)}",
                 ]
             )
         else:
-            assertion_suggestions.append(
-                {"type": "json_path_equal", "path": "$.code", "expected": expected_status_code, "confidence": 0.75}
-            )
+            assertion_suggestions.append(f"$.code == {expected_status_code}")
 
         return {
             "name": f"{endpoint.name}-{title}",
@@ -61,14 +59,11 @@ class TestcaseGeneratorAgent:
                     "request": request_data,
                 }
             ],
-            "assertions": [],
+            "assertions": assertion_suggestions,
             "variables": {
                 "generated_by": self.model_name,
                 "case_type": case_type,
                 "source_endpoint_id": endpoint.id,
-                "ai_assertion_suggestions": {
-                    "suggestions": assertion_suggestions,
-                },
             },
         }
 
@@ -181,19 +176,19 @@ class TestcaseGeneratorAgent:
                 return next(iter(properties.keys()))
         return "success"
 
-    def _build_business_assertions(self, endpoint: ApiEndpoint) -> list[dict[str, Any]]:
-        assertions: list[dict[str, Any]] = []
+    def _build_business_assertions(self, endpoint: ApiEndpoint) -> list[str]:
+        assertions: list[str] = []
         response_example = endpoint.example_response if isinstance(endpoint.example_response, dict) else {}
         response_schema = endpoint.response_schema if isinstance(endpoint.response_schema, dict) else {}
         properties = response_schema.get("properties") if isinstance(response_schema.get("properties"), dict) else {}
 
         if "code" in response_example or "code" in properties:
             expected = response_example.get("code", 200)
-            assertions.append({"type": "business_code", "path": "$.code", "expected": expected, "confidence": 0.9})
+            assertions.append(f"$.code == {expected}")
         if "success" in response_example or "success" in properties:
-            assertions.append({"type": "business_success", "path": "$.success", "expected": True, "confidence": 0.85})
+            assertions.append("$.success == true")
         if "data" in response_example or "data" in properties:
-            assertions.append({"type": "json_path_not_null", "path": "$.data", "confidence": 0.7})
+            assertions.append("$.data != null")
         return assertions
 
     def _copy_request(self, request_data: dict[str, Any]) -> dict[str, Any]:

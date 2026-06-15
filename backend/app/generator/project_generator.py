@@ -128,6 +128,8 @@ class PytestProjectGenerator:
 
     def _build_ai_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
         variables = test_case.variables or {}
+        if "ai_assertion_dsl" in variables:
+            return normalize_ai_suggestions({"assertions": variables.get("ai_assertion_dsl")})
         return normalize_ai_suggestions(variables.get("ai_assertion_suggestions") or {})
 
     def _build_final_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:

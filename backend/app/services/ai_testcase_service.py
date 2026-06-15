@@ -32,23 +32,26 @@ def generate_test_cases_for_endpoint(db: Session, endpoint_id: int) -> dict:
         )
         raise HTTPException(status_code=500, detail="mock AI output validation failed") from exc
 
-    test_cases = [
-        test_case_repository.create_test_case(
-            db,
-            {
-                "project_id": endpoint.project_id,
-                "api_endpoint_id": endpoint.id,
-                "name": generated_case.name,
-                "description": generated_case.description,
-                "priority": generated_case.priority,
-                "status": "generated",
-                "steps": [step.model_dump() for step in generated_case.steps],
-                "assertions": [assertion.model_dump() for assertion in generated_case.assertions],
-                "variables": generated_case.variables,
-            },
+    test_cases = []
+    for generated_case in generated_output.cases:
+        variables = dict(generated_case.variables or {})
+        variables["ai_assertion_dsl"] = list(generated_case.assertions)
+        test_cases.append(
+            test_case_repository.create_test_case(
+                db,
+                {
+                    "project_id": endpoint.project_id,
+                    "api_endpoint_id": endpoint.id,
+                    "name": generated_case.name,
+                    "description": generated_case.description,
+                    "priority": generated_case.priority,
+                    "status": "generated",
+                    "steps": [step.model_dump() for step in generated_case.steps],
+                    "assertions": [],
+                    "variables": variables,
+                },
+            )
         )
-        for generated_case in generated_output.cases
-    ]
 
     record = ai_analysis_record_repository.create_ai_analysis_record(
         db,

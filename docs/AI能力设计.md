@@ -45,12 +45,21 @@ backend/app/parsers/html_ai_parser.py
 
 执行引擎额外支持 `response_time`。
 
-第 10.1 阶段后，mock AI 用例生成会根据接口响应示例或响应 Schema 生成断言建议，保存到 `variables.ai_assertion_suggestions.suggestions`。每条建议必须包含 `confidence`。
+第 10.1 阶段后，mock AI 用例生成会根据接口响应示例或响应 Schema 生成断言建议。`v0.10.2` 起，AI 断言建议统一输出 DSL 字符串列表，保存到 `variables.ai_assertion_dsl`。
+
+AI 输出示例：
+
+```json
+{
+  "assertions": ["$.code == 200", "$.data != null"]
+}
+```
 
 AI 断言规则：
 
 - AI 只生成建议断言。
-- AI 断言默认 `enabled=false`。
+- AI 断言以 DSL 字符串表达。
+- AI 断言默认不进入用户断言列表。
 - AI 断言不直接决定 pass/fail。
 - AI 不再把断言直接写成最终裁决规则。
 - AI 不允许生成写死 `business_code = 1`。
@@ -72,7 +81,7 @@ AI 断言规则：
 
 - AI 生成的测试用例保存到 `test_case`。
 - mock AI 调用记录保存到 `ai_analysis_record`。
-- AI 断言建议保存到 `test_case.variables.ai_assertion_suggestions`。
+- AI 断言建议保存到 `test_case.variables.ai_assertion_dsl`。
 - 第 9 阶段接口文档导入仍保存到 `api_document` 和 `api_endpoint`。
 - 第 9 阶段 `$ref` 展开结果和示例 / Schema 数据复用 `api_endpoint` 现有 JSON 字段保存，不新增数据库表。
 
@@ -82,6 +91,7 @@ AI 断言规则：
 - 用户是控制。
 - 系统是裁决。
 - 最终断言由 `backend/app/core/assertion_engine_v2.py` 融合生成。
+- DSL 与内部结构转换由 `backend/app/core/assertion_dsl.py` 完成。
 - 断言融合优先级：`user > swagger > ai`。
 
 ## 当前限制

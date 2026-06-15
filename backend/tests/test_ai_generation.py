@@ -84,9 +84,10 @@ def test_generate_mock_testcases_for_endpoint() -> None:
     }
     assert all(item["status"] == "generated" for item in data["test_cases"])
     assert all(item["assertions"] == [] for item in data["test_cases"])
-    assert all("ai_assertion_suggestions" in item["variables"] for item in data["test_cases"])
-    first_suggestions = data["test_cases"][0]["variables"]["ai_assertion_suggestions"]["suggestions"]
-    assert all("confidence" in item for item in first_suggestions)
+    assert all("ai_assertion_dsl" in item["variables"] for item in data["test_cases"])
+    first_suggestions = data["test_cases"][0]["variables"]["ai_assertion_dsl"]
+    assert all(isinstance(item, str) for item in first_suggestions)
+    assert "status_code == 200" in first_suggestions
 
     list_response = client.get(f"/api/v1/projects/{project['id']}/test-cases")
     assert len(list_response.json()["data"]) == 4

@@ -47,7 +47,17 @@ def _execute_assertion(response, assertion: dict, response_time_ms: int) -> None
 
 def _assert_status_code(response, assertion: dict) -> None:
     expected = assertion.get("expected")
-    assert response.status_code == expected, f"expected status_code {expected}, got {response.status_code}"
+    operator = assertion.get("operator") or "=="
+    if operator == "==":
+        assert response.status_code == expected, f"expected status_code {expected}, got {response.status_code}"
+    elif operator == "!=":
+        assert response.status_code != expected, f"expected status_code != {expected}, got {response.status_code}"
+    elif operator == ">":
+        assert response.status_code > expected, f"expected status_code > {expected}, got {response.status_code}"
+    elif operator == "<":
+        assert response.status_code < expected, f"expected status_code < {expected}, got {response.status_code}"
+    else:
+        raise AssertionError(f"unsupported status_code operator: {operator}")
 
 
 def _assert_business_code(response, assertion: dict) -> None:
@@ -88,6 +98,10 @@ def _assert_json_path(response, assertion: dict) -> None:
         assert actual != expected, f"expected value != {expected}, got {actual}"
     elif operator == "contains":
         assert str(expected) in json.dumps(actual, ensure_ascii=False), f"expected content {expected} not found"
+    elif operator == ">":
+        assert actual > expected, f"expected {actual} > {expected}"
+    elif operator == "<":
+        assert actual < expected, f"expected {actual} < {expected}"
     else:
         raise AssertionError(f"unsupported json path operator: {operator}")
 

@@ -2,7 +2,7 @@
 
 AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 mock AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试。
 
-当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已归档为 `v0.10.0`。第 10.1 阶段已完成“断言系统2.0融合引擎”，当前版本适合演示和继续迭代。
+当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已归档为 `v0.10.0`。第 10.1 阶段已完成断言系统融合引擎和 DSL 可视化系统，当前版本为 `v0.10.2`，适合演示和继续迭代。
 
 ## 当前阶段
 
@@ -18,7 +18,7 @@ AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产
 - 第 8 阶段：MVP 基线固化与演示准备，版本为 `v0.1.0-mvp`。
 - 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
 - 第 10 阶段：鉴权配置与业务断言增强。
-- 第 10.1 阶段：断言系统2.0，融合 AI 建议、Swagger 基础断言和用户断言。
+- 第 10.1 阶段：断言系统2.0，融合 AI 建议、Swagger 基础断言和用户断言，并上线 DSL 可视化断言编辑器。
 
 ## 技术栈
 
@@ -95,6 +95,8 @@ ai-api-test-platform/
 - 断言系统2.0支持统一断言结构、来源追踪、优先级融合、同 path 去重
 - AI 断言仅作为建议，默认不参与 pass/fail；用户断言优先级最高
 - Swagger/OpenAPI 断言作为基础层，参与 status code、required 字段和 schema 结构断言
+- 断言 DSL 可视化系统，用户通过 `$.code == 200`、`$.data != null` 等 DSL 管理断言，不再手写 JSON 断言
+- 新增 DSL 解析和 JSON 转 DSL 接口
 
 ## 暂未实现内容
 
@@ -245,6 +247,57 @@ user > swagger > ai
 - 同一路径断言去重时保留最高优先级。
 - `business_code` 支持 `success_codes` 和 `success_expression`，不再写死 1。
 - `$.data` 相关断言仅在业务成功后执行。
+
+## v0.10.2 断言 DSL 可视化系统
+
+DSL 是唯一用户断言语言，JSON 断言结构只在执行层内部使用。
+
+支持 DSL：
+
+```text
+$.code == 200
+$.data != null
+status_code == 200
+$.msg contains 成功
+```
+
+支持操作：
+
+```text
+==  !=  >  <  contains  exists  not null
+```
+
+新增接口：
+
+```text
+POST /api/v1/assertion/parse
+POST /api/v1/assertion/to-dsl
+```
+
+兼容别名：
+
+```text
+POST /api/assertion/parse
+POST /api/assertion/to-dsl
+```
+
+前端测试用例编辑页提供：
+
+- DSL 断言列表
+- 新增 / 删除 / 编辑 / 复制
+- 模板一键插入
+- AI 建议 DSL 一键插入
+- Swagger 断言 DSL 一键插入
+
+AI mock 输出已简化为：
+
+```json
+{
+  "assertions": ["$.code == 200", "$.data != null"]
+}
+```
+
+AI DSL 默认保存为建议，不直接控制测试结果。
 
 ## 验证方式
 

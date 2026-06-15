@@ -2,7 +2,7 @@
 
 ## 后端简介
 
-这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强，在第 10.1 阶段支持断言系统 2.0 融合引擎。
+这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强，在第 10.1 阶段支持断言系统 2.0 融合引擎和 DSL 可视化断言系统。
 
 ## 技术栈
 
@@ -94,6 +94,7 @@ GET /api/v1/health
 - 业务断言兜底
 - 执行结果保存脱敏请求数据、响应体、curl 和断言结果
 - 断言系统 2.0：融合用户断言、Swagger/OpenAPI 基础断言和 mock AI 断言建议
+- DSL 断言解析和 JSON 转 DSL
 
 ## 第 9 阶段新增接口
 
@@ -142,6 +143,14 @@ POST /api/v1/executions/run
 - `business_code` 不再写死为 1，支持 `success_codes` 和 `success_expression`。
 - `$.data` 相关 JSONPath 仅在业务成功后执行。
 - mock AI 仅生成带 `confidence` 的建议断言，默认不控制 pass/fail。
+
+v0.10.2 DSL 增强：
+
+- 新增 `backend/app/core/assertion_dsl.py`。
+- 新增 `POST /api/v1/assertion/parse` 和 `POST /api/v1/assertion/to-dsl`。
+- 兼容 `POST /api/assertion/parse` 和 `POST /api/assertion/to-dsl`。
+- 用户断言优先使用 DSL 字符串数组保存。
+- AI mock 输出 `assertions: string[]`，保存为 `variables.ai_assertion_dsl`。
 
 生成路径：
 

@@ -19,11 +19,20 @@ def test_fuse_assertions_prefers_user_over_swagger_and_ai() -> None:
 
 
 def test_ai_suggestions_are_disabled_by_default() -> None:
-    ai = normalize_ai_suggestions(
-        {"suggestions": [{"type": "json_path_equal", "path": "$.code", "expected": 200, "confidence": 0.9}]}
-    )
+    ai = normalize_ai_suggestions({"assertions": ["$.code == 200"]})
     fused = fuse_assertions(ai_assertions=ai)
 
     assert fused["final_assertions"][0]["source"] == "ai"
     assert fused["final_assertions"][0]["enabled"] is False
-    assert fused["final_assertions"][0]["confidence"] == 0.9
+    assert fused["final_assertions"][0]["dsl"] == "$.code == 200"
+
+
+def test_user_dsl_overrides_ai_dsl() -> None:
+    ai = normalize_ai_suggestions({"assertions": ["$.code == 200"]})
+    user = normalize_user_assertions(["$.code == 0"])
+
+    fused = fuse_assertions(ai_assertions=ai, user_assertions=user)
+
+    code_assertion = next(item for item in fused["final_assertions"] if item["path"] == "$.code")
+    assert code_assertion["source"] == "user"
+    assert code_assertion["expected"] == 0
