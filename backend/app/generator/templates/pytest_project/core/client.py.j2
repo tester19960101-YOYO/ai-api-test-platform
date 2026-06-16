@@ -85,7 +85,7 @@ class ApiClient:
         return path
 
     def _merge_headers(self, request_headers: dict) -> dict:
-        # 合并优先级：环境公共 headers < 环境鉴权 headers < 用例请求 headers。
+        # Header merge order: environment headers < environment auth headers < case headers.
         headers = dict(self.headers)
         auth_headers = self._auth_headers()
         headers.update(auth_headers)

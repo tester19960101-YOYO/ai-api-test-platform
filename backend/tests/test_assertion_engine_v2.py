@@ -36,3 +36,18 @@ def test_user_dsl_overrides_ai_dsl() -> None:
     code_assertion = next(item for item in fused["final_assertions"] if item["path"] == "$.code")
     assert code_assertion["source"] == "user"
     assert code_assertion["expected"] == 0
+
+
+def test_user_dsl_allows_operator_without_spaces() -> None:
+    user = normalize_user_assertions(['$.msg== "操作成功"'])
+
+    assert user[0]["path"] == "$.msg"
+    assert user[0]["operator"] == "=="
+    assert user[0]["expected"] == "操作成功"
+
+
+def test_invalid_user_dsl_becomes_failed_runtime_assertion() -> None:
+    user = normalize_user_assertions(["not a valid assertion"])
+
+    assert user[0]["path"] == "$.__invalid_assertion__"
+    assert "parse_error" in user[0]

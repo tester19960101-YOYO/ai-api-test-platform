@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import traceback
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -50,9 +51,19 @@ def run_execution(db: Session, payload: ExecutionRunRequest) -> dict:
         },
     )
 
-    generator = PytestProjectGenerator()
-    generated_project_path = generator.generate(project, environment, task, test_cases, payload.timeout)
-    runner_result = PytestRunner().run(generated_project_path, task.id)
+    try:
+        generator = PytestProjectGenerator()
+        generated_project_path = generator.generate(project, environment, task, test_cases, payload.timeout)
+        runner_result = PytestRunner().run(generated_project_path, task.id)
+    except Exception as exc:
+        return _mark_execution_failed(
+            db=db,
+            task=task,
+            project_id=project.id,
+            test_cases=test_cases,
+            error_message=f"execution failed before pytest result was produced: {exc}",
+            traceback_text=traceback.format_exc(),
+        )
 
     result_rows = _save_execution_results(db, task.id, runner_result.results)
     passed_cases = sum(1 for item in result_rows if item.status == "passed")
@@ -147,6 +158,92 @@ def _save_execution_results(db: Session, task_id: int, results: list[dict]):
             }
         ]
     return execution_result_repository.create_execution_results(db, rows)
+
+
+def _mark_execution_failed(
+    db: Session,
+    task,
+    project_id: int,
+    test_cases,
+    error_message: str,
+    traceback_text: str,
+) -> dict:
+    project_root = Path(__file__).resolve().parents[3]
+    generated_project_path = project_root / "storage" / "generated" / f"project_{project_id}" / f"execution_{task.id}"
+    report_dir = project_root / "storage" / "reports" / f"execution_{task.id}"
+    log_dir = project_root / "storage" / "logs" / f"execution_{task.id}"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    generated_project_path.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "report.html"
+    log_path = log_dir / "pytest.log"
+    log_path.write_text(f"{error_message}\n\n{traceback_text}", encoding="utf-8")
+    if not report_path.exists():
+        report_path.write_text(
+            "<html><body><h1>Execution Failed</h1><pre>"
+            + error_message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            + "</pre></body></html>",
+            encoding="utf-8",
+        )
+
+    result_rows = _save_execution_results(
+        db,
+        task.id,
+        [
+            {
+                "test_case_id": test_cases[0].id if test_cases else None,
+                "api_endpoint_id": test_cases[0].api_endpoint_id if test_cases else None,
+                "status": "failed",
+                "error_message": error_message,
+                "assertion_result": {"items": [], "passed": False},
+            }
+        ],
+    )
+    task = execution_task_repository.update_execution_task(
+        db,
+        task,
+        {
+            "status": "failed",
+            "passed_cases": 0,
+            "failed_cases": len(test_cases) or 1,
+            "finished_at": datetime.now(),
+            "config": {
+                **(task.config or {}),
+                "generated_project_path": _to_project_path(generated_project_path),
+                "report_path": _to_project_path(report_path),
+                "log_path": _to_project_path(log_path),
+                "pytest_exit_code": 1,
+            },
+        },
+    )
+    report = test_report_repository.create_test_report(
+        db,
+        {
+            "execution_task_id": task.id,
+            "project_id": project_id,
+            "title": f"{task.task_name} report",
+            "summary": {
+                "total_cases": len(test_cases),
+                "passed_cases": 0,
+                "failed_cases": len(test_cases) or 1,
+                "pytest_exit_code": 1,
+                "error_message": error_message,
+            },
+            "report_path": _to_project_path(report_path),
+            "status": "failed",
+        },
+    )
+    return {
+        "task": task,
+        "results": result_rows,
+        "report": report,
+        "generated_project_path": _to_project_path(generated_project_path),
+        "report_path": _to_project_path(report_path),
+        "log_path": _to_project_path(log_path),
+        "pytest_exit_code": 1,
+        "stdout": "",
+        "stderr": error_message,
+    }
 
 
 def _to_project_path(path: Path) -> str:

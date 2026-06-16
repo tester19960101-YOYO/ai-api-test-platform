@@ -22,6 +22,8 @@ class AssertionInput:
 
 
 def build_assertion(assertion: dict[str, Any], source: str, default_priority: int | None = None) -> dict[str, Any]:
+    assertion = assertion if isinstance(assertion, dict) else {}
+    source = source if source in SOURCE_PRIORITY else "user"
     assertion_type = _normalize_type(str(assertion.get("type") or "json_path"))
     path = assertion.get("path")
     operator = assertion.get("operator") or _operator_from_legacy_type(assertion_type)
@@ -33,7 +35,7 @@ def build_assertion(assertion: dict[str, Any], source: str, default_priority: in
         "path": path,
         "operator": operator,
         "expected": expected,
-        "priority": int(assertion.get("priority") or default_priority or SOURCE_PRIORITY[source]),
+        "priority": _safe_int(assertion.get("priority") or default_priority or SOURCE_PRIORITY[source]),
         "enabled": bool(assertion.get("enabled", source != "ai")),
     }
     if "success_codes" in assertion:
@@ -44,6 +46,8 @@ def build_assertion(assertion: dict[str, Any], source: str, default_priority: in
         normalized["confidence"] = assertion["confidence"]
     if "dsl" in assertion:
         normalized["dsl"] = assertion["dsl"]
+    if "parse_error" in assertion:
+        normalized["parse_error"] = assertion["parse_error"]
     return normalized
 
 
@@ -117,9 +121,15 @@ def normalize_ai_suggestions(raw: Any) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in suggestions:
         if isinstance(item, str):
-            normalized.append(build_assertion(parse_assertion_dsl(item, source="ai", enabled=False), "ai"))
+            try:
+                normalized.append(build_assertion(parse_assertion_dsl(item, source="ai", enabled=False), "ai"))
+            except ValueError:
+                continue
         elif isinstance(item, dict):
-            normalized.append(build_assertion(_legacy_to_v2(item), "ai"))
+            try:
+                normalized.append(build_assertion(_legacy_to_v2(item), "ai"))
+            except Exception:
+                continue
     return normalized
 
 
@@ -129,9 +139,37 @@ def normalize_user_assertions(raw: Any) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in raw:
         if isinstance(item, str):
-            normalized.append(build_assertion(parse_assertion_dsl(item, source="user", enabled=True), "user"))
+            try:
+                normalized.append(build_assertion(parse_assertion_dsl(item, source="user", enabled=True), "user"))
+            except ValueError as exc:
+                normalized.append(
+                    build_assertion(
+                        {
+                            "type": "json_path",
+                            "path": "$.__invalid_assertion__",
+                            "operator": "exists",
+                            "dsl": item,
+                            "parse_error": str(exc),
+                        },
+                        "user",
+                    )
+                )
         elif isinstance(item, dict):
-            normalized.append(build_assertion(_legacy_to_v2(item), "user"))
+            try:
+                normalized.append(build_assertion(_legacy_to_v2(item), "user"))
+            except Exception as exc:
+                normalized.append(
+                    build_assertion(
+                        {
+                            "type": "json_path",
+                            "path": "$.__invalid_assertion__",
+                            "operator": "exists",
+                            "dsl": str(item),
+                            "parse_error": str(exc),
+                        },
+                        "user",
+                    )
+                )
     return normalized
 
 
@@ -147,8 +185,13 @@ def fuse_assertions(
         ("user", user_assertions or []),
     ):
         for assertion in assertions:
+            if not isinstance(assertion, dict):
+                continue
             source_name = assertion.get("source") or source
-            collected.append(build_assertion(assertion, source_name))
+            try:
+                collected.append(build_assertion(assertion, source_name))
+            except Exception:
+                continue
 
     collected.sort(key=lambda item: (item["priority"], SOURCE_PRIORITY.get(item["source"], 99)))
     deduped: dict[tuple[str, str, str], dict[str, Any]] = {}
@@ -216,6 +259,13 @@ def _operator_from_legacy_type(assertion_type: str) -> str:
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return SOURCE_PRIORITY["user"]
 
 
 def _schema_properties(schema: dict[str, Any]) -> dict[str, Any]:

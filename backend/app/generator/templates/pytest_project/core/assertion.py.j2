@@ -1,6 +1,7 @@
 import json
 
 from jsonpath_ng import parse
+from jsonpath_ng.exceptions import JsonPathParserError
 
 
 def run_assertions(response, assertion_context: dict, response_time_ms: int) -> dict:
@@ -18,7 +19,7 @@ def run_assertions(response, assertion_context: dict, response_time_ms: int) -> 
         try:
             _execute_assertion(response, assertion, response_time_ms)
             results.append({"assertion": assertion, "passed": True, "message": "ok"})
-        except AssertionError as exc:
+        except Exception as exc:
             if assertion.get("type") == "business_code" or assertion.get("path") == "$.success":
                 business_success = False
             results.append({"assertion": assertion, "passed": False, "message": str(exc)})
@@ -40,6 +41,7 @@ def _execute_assertion(response, assertion: dict, response_time_ms: int) -> None
         _assert_json_path(response, assertion)
     elif assertion_type == "response_time":
         expected = assertion.get("expected")
+        assert expected is not None, "response_time expected value is empty"
         assert response_time_ms <= expected, f"expected response_time <= {expected}, got {response_time_ms}"
     else:
         raise AssertionError(f"unsupported assertion type: {assertion_type}")
@@ -84,6 +86,9 @@ def _assert_business_code(response, assertion: dict) -> None:
 def _assert_json_path(response, assertion: dict) -> None:
     data = _response_json(response)
     path = assertion.get("path")
+    assert path, f"json path is empty: {assertion.get('dsl') or assertion}"
+    parse_error = assertion.get("parse_error")
+    assert not parse_error, f"assertion DSL parse error: {parse_error}; dsl={assertion.get('dsl')}"
     operator = assertion.get("operator") or "=="
     values = _json_path_values(data, path)
     if operator == "exists":
@@ -114,18 +119,28 @@ def _response_json(response):
 
 
 def _json_path_values(data, path: str):
-    return [match.value for match in parse(path).find(data)]
+    if not path:
+        raise AssertionError("json path is empty")
+    try:
+        return [match.value for match in parse(path).find(data)]
+    except JsonPathParserError as exc:
+        raise AssertionError(f"invalid json path: {path}") from exc
+    except Exception as exc:
+        raise AssertionError(f"json path evaluation failed: {path}; {exc}") from exc
 
 
 def _eval_success_expression(data: dict, expression: str) -> bool:
-    if "==" not in expression:
+    try:
+        if "==" not in expression:
+            return False
+        left, right = [part.strip() for part in expression.split("==", 1)]
+        values = _json_path_values(data, left)
+        if not values:
+            return False
+        expected = _parse_literal(right)
+        return values[0] == expected
+    except Exception:
         return False
-    left, right = [part.strip() for part in expression.split("==", 1)]
-    values = _json_path_values(data, left)
-    if not values:
-        return False
-    expected = _parse_literal(right)
-    return values[0] == expected
 
 
 def _parse_literal(value: str):

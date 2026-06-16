@@ -345,3 +345,14 @@ npm run dev
 - 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强
 - 第 14 阶段：CI/CD、定时任务与权限系统
+
+## 执行引擎稳定性修复
+
+当前 `POST /api/v1/executions/run` 已增加执行稳定性兜底：生成 Pytest 工程、调用 pytest、读取 `results.jsonl`、DSL/JSONPath 断言执行过程中出现的非系统级异常，会转换为 `failed` 执行结果并写入 `execution_result.error_message`、`assertion_result`、执行日志和报告元信息，不再直接冒泡为 HTTP 500。
+
+当前行为：
+
+- DSL 解析失败、JSONPath 为空或非法、响应不是 JSON、断言执行异常，均记录为断言失败。
+- pytest 超时或结果文件单行 JSON 损坏，会记录为 failed 结果。
+- `business_code` 不写死为 1，继续使用 `success_codes` 或 `success_expression`。
+- JSON 断言结构只用于后端执行层内部；用户侧仍以 DSL 为主要断言语言。

@@ -34,22 +34,35 @@ class PytestRunner:
             str(report_path),
             "--self-contained-html",
         ]
-        completed = subprocess.run(
-            command,
-            cwd=generated_project_path,
-            text=True,
-            capture_output=True,
-            timeout=300,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=generated_project_path,
+                text=True,
+                capture_output=True,
+                timeout=300,
+                check=False,
+            )
+            exit_code = completed.returncode
+            stdout = completed.stdout
+            stderr = completed.stderr
+        except subprocess.TimeoutExpired as exc:
+            exit_code = 124
+            stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+            stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+            stderr = f"{stderr}\npytest execution timed out after {exc.timeout} seconds".strip()
+        except Exception as exc:
+            exit_code = 1
+            stdout = ""
+            stderr = f"pytest runner failed: {exc}"
         log_path.write_text(
-            f"COMMAND: {' '.join(command)}\n\nSTDOUT:\n{completed.stdout}\n\nSTDERR:\n{completed.stderr}",
+            f"COMMAND: {' '.join(command)}\n\nSTDOUT:\n{stdout}\n\nSTDERR:\n{stderr}",
             encoding="utf-8",
         )
         return PytestRunResult(
-            exit_code=completed.returncode,
-            stdout=completed.stdout,
-            stderr=completed.stderr,
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
             report_path=report_path,
             log_path=log_path,
             results=self._load_results(generated_project_path / "results" / "results.jsonl"),
@@ -59,7 +72,17 @@ class PytestRunner:
         if not result_file.exists():
             return []
         results = []
-        for line in result_file.read_text(encoding="utf-8").splitlines():
-            if line.strip():
+        for line_no, line in enumerate(result_file.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
                 results.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                results.append(
+                    {
+                        "status": "failed",
+                        "error_message": f"invalid execution result JSON at line {line_no}: {exc}",
+                        "assertion_result": {"items": [], "passed": False},
+                    }
+                )
         return results

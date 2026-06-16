@@ -315,6 +315,83 @@ def test_http_200_with_business_success_passes_swagger_assertions() -> None:
         server.shutdown()
 
 
+def test_run_execution_with_dsl_assertions_without_operator_spaces() -> None:
+    server, base_url = start_server(BusinessSuccessHandler)
+    try:
+        client = build_client()
+        project = client.post("/api/v1/projects", json={"name": "DSL Project"}).json()["data"]
+        environment = client.post(
+            f"/api/v1/projects/{project['id']}/environments",
+            json={"name": "dsl-env", "base_url": base_url},
+        ).json()["data"]
+        test_case = client.post(
+            "/api/v1/test-cases",
+            json={
+                "project_id": project["id"],
+                "name": "GET dsl success",
+                "status": "active",
+                "steps": [{"name": "GET dsl success", "request": {"method": "GET", "path": "/dsl"}}],
+                "assertions": ["status_code == 200", "$.code==200", '$.msg=="ok"', "$.data != null"],
+            },
+        ).json()["data"]
+
+        response = client.post(
+            "/api/v1/executions/run",
+            json={
+                "project_id": project["id"],
+                "environment_id": environment["id"],
+                "case_ids": [test_case["id"]],
+                "timeout": 5,
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["task"]["status"] == "passed"
+        assert data["results"][0]["status"] == "passed"
+    finally:
+        server.shutdown()
+
+
+def test_run_execution_invalid_jsonpath_returns_failed_result_not_500() -> None:
+    server, base_url = start_server(BusinessSuccessHandler)
+    try:
+        client = build_client()
+        project = client.post("/api/v1/projects", json={"name": "Invalid JSONPath Project"}).json()["data"]
+        environment = client.post(
+            f"/api/v1/projects/{project['id']}/environments",
+            json={"name": "invalid-jsonpath-env", "base_url": base_url},
+        ).json()["data"]
+        test_case = client.post(
+            "/api/v1/test-cases",
+            json={
+                "project_id": project["id"],
+                "name": "GET invalid jsonpath",
+                "status": "active",
+                "steps": [{"name": "GET invalid jsonpath", "request": {"method": "GET", "path": "/invalid-jsonpath"}}],
+                "assertions": [{"type": "json_path", "path": "$.data[", "operator": "exists"}],
+            },
+        ).json()["data"]
+
+        response = client.post(
+            "/api/v1/executions/run",
+            json={
+                "project_id": project["id"],
+                "environment_id": environment["id"],
+                "case_ids": [test_case["id"]],
+                "timeout": 5,
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["task"]["status"] == "failed"
+        assert data["results"][0]["status"] == "failed"
+        assert "invalid json path" in data["results"][0]["error_message"]
+    finally:
+        server.shutdown()
+
+
 def _import_business_endpoint(client: TestClient, project_id: int, path: str) -> dict:
     openapi_content = {
         "openapi": "3.0.0",

@@ -97,7 +97,10 @@ def assertions_to_dsl_list(items: Any) -> list[str]:
 
 def _split_dsl(text: str) -> tuple[str, str, str | None]:
     for operator in SUPPORTED_OPERATORS:
-        pattern = rf"^(.+?)\s+{re.escape(operator)}(?:\s+(.+))?$"
+        if operator in {"==", "!=", ">", "<"}:
+            pattern = rf"^(.+?)\s*{re.escape(operator)}\s*(.+)$"
+        else:
+            pattern = rf"^(.+?)\s+{re.escape(operator)}(?:\s+(.+))?$"
         match = re.match(pattern, text)
         if match:
             left = match.group(1).strip()
