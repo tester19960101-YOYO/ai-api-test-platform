@@ -2,7 +2,7 @@
 
 ## 项目定位
 
-AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 mock AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试，沉淀执行结果和测试报告。
+AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试，沉淀执行结果和测试报告。
 
 当前已完成第一阶段到第 10.1 阶段，MVP 基线版本为 `v0.1.0-mvp`，第 9 阶段收尾版本标记为 `v0.1.0-stage9`，第 10 阶段归档版本为 `v0.10.0`，当前断言 DSL 可视化版本为 `v0.10.2`：
 
@@ -91,14 +91,17 @@ frontend/
 ## AI 模块规范
 
 - AI 模块位置固定为 `backend/app/ai`。
-- 当前 AI 用例生成是 mock 实现，不接真实 AI，不调用 OpenAI、Qwen 或其他真实模型。
+- 第 11 阶段起，AI 用例生成支持通过 OpenAI-compatible Chat Completions 接入真实大模型；密钥仅通过环境变量配置，不写入源码。
+- 真实 AI 配置项固定为 `AI_API_BASE_URL`、`AI_API_KEY`、`AI_MODEL_NAME`、`AI_REQUEST_TIMEOUT`。
+- AI 输出必须是结构化 JSON，不能返回 Markdown、解释文本或自由 Python 代码。
+- 第 11 阶段 AI 用例生成标准输出根字段为 `test_cases`，每条用例包含 `type`、`request`、`assertions`。
 - AI 不直接生成自由 Python 代码。
 - AI 只生成结构化 JSON；断言建议必须使用 DSL 字符串列表，例如 `["$.code == 200"]`。
 - AI 输出必须经过 schema 校验后再入库。
 - 用户断言的唯一编辑语言是 DSL，JSON 断言结构只允许在后端执行层内部使用。
 - 生成的测试用例保存到 `test_case`。
-- mock AI 调用记录保存到 `ai_analysis_record`。
-- 后续真实 AI 接入时必须复用统一模块结构和结构化输出边界。
+- AI 调用记录保存到 `ai_analysis_record`。
+- 真实 AI 输出必须复用统一模块结构和结构化输出边界。
 
 ## 自动化测试代码生成规范
 
@@ -354,7 +357,7 @@ npm run dev
 
 ## 不要做的事情
 
-- 当前不要接真实 AI。
+- 除 AI 用例生成模块外，不要在其他模块私自接入真实 AI。
 - 当前不要调用 OpenAI、Qwen 或其他真实模型。
 - 当前不要让 AI 生成自由 Python 代码。
 - 当前不要实现复杂接口依赖编排。

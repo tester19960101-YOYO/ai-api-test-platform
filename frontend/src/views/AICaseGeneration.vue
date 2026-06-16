@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <ProjectRequired :project-id="projectId" />
-    <el-alert title="当前为 mock AI 用例生成，不调用真实大模型" type="info" :closable="false" show-icon />
+    <el-alert title="当前使用真实 OpenAI 生成测试用例；如未配置 AI_API_KEY，后端会返回明确配置错误，不会自动 fallback 到 mock" type="info" :closable="false" show-icon />
     <div class="page-toolbar">
       <div class="toolbar-left">
         <el-select v-model="selectedEndpointId" placeholder="选择接口" filterable style="width: 360px">
@@ -13,7 +13,7 @@
           />
         </el-select>
         <el-button type="primary" :disabled="!selectedEndpointId" :loading="generating" @click="generateCases">
-          生成 mock 用例
+          生成 AI 用例
         </el-button>
       </div>
     </div>
@@ -71,7 +71,7 @@ async function generateCases() {
   try {
     const result = await aiApi.generateCases(selectedEndpointId.value)
     generatedCases.value = result.test_cases
-    ElMessage.success(`已生成 ${result.case_count} 条 mock 用例`)
+    ElMessage.success(`已生成 ${result.case_count} 条 AI 用例`)
   } finally {
     generating.value = false
   }

@@ -2,7 +2,7 @@
 
 ## 后端简介
 
-这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成 MVP 后端闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强，在第 10.1 阶段支持断言系统 2.0 融合引擎和 DSL 可视化断言系统。
+这是 AI API Test Platform / AI 接口自动化测试平台的后端服务。当前已完成后端业务闭环，并在第 9 阶段支持多形态接口输入导入与 AI 辅助解析，在第 10 阶段支持环境鉴权配置与业务断言增强，在第 10.1 阶段支持断言系统 2.0 融合引擎和 DSL 可视化断言系统。
 
 ## 技术栈
 
@@ -50,7 +50,13 @@ ENVIRONMENT="local"
 LOG_LEVEL="INFO"
 CORS_ORIGINS="*"
 DATABASE_URL="mysql+pymysql://ai_test:ai_test@127.0.0.1:3306/ai_api_test_platform"
+AI_API_BASE_URL="https://api.openai.com/v1"
+AI_API_KEY=""
+AI_MODEL_NAME="gpt-4o-mini"
+AI_REQUEST_TIMEOUT=60
 ```
+
+`AI_API_KEY` 不要提交到代码仓库；未配置时，AI 用例生成接口会返回明确配置错误。
 
 ## 依赖安装
 
@@ -87,13 +93,13 @@ GET /api/v1/health
 - 项目、环境、接口资产、测试用例 CRUD
 - Swagger/OpenAPI 与 curl 导入解析
 - 第 9 阶段多形态接口输入预览与保存
-- mock AI 用例生成
+- AI 用例生成
 - Pytest + Requests 基础执行引擎
 - 环境级 token / cookie / header 鉴权配置
 - 执行请求头合并
 - 业务断言兜底
 - 执行结果保存脱敏请求数据、响应体、curl 和断言结果
-- 断言系统 2.0：融合用户断言、Swagger/OpenAPI 基础断言和 mock AI 断言建议
+- 断言系统 2.0：融合用户断言、Swagger/OpenAPI 基础断言和 AI 断言建议
 - DSL 断言解析和 JSON 转 DSL
 
 ## 第 9 阶段新增接口
@@ -115,7 +121,7 @@ POST /api/v1/projects/{project_id}/documents/import-url
 
 边界：
 
-- AI 当前仍为 mock。
+- AI 用例生成已支持真实大模型配置。
 - AI 不直接生成自由 Python 代码。
 - AI 不凭空编造接口参数并直接保存。
 - 保存前允许用户编辑确认。
@@ -142,7 +148,7 @@ POST /api/v1/executions/run
 - 融合优先级：用户断言 > Swagger/OpenAPI 断言 > AI 建议断言。
 - `business_code` 不再写死为 1，支持 `success_codes` 和 `success_expression`。
 - `$.data` 相关 JSONPath 仅在业务成功后执行。
-- mock AI 仅生成带 `confidence` 的建议断言，默认不控制 pass/fail。
+- AI 断言建议默认不控制 pass/fail。
 
 v0.10.2 DSL 增强：
 
@@ -150,7 +156,7 @@ v0.10.2 DSL 增强：
 - 新增 `POST /api/v1/assertion/parse` 和 `POST /api/v1/assertion/to-dsl`。
 - 兼容 `POST /api/assertion/parse` 和 `POST /api/assertion/to-dsl`。
 - 用户断言优先使用 DSL 字符串数组保存。
-- AI mock 输出 `assertions: string[]`，保存为 `variables.ai_assertion_dsl`。
+- AI 输出 `assertions: string[]`，保存为 `variables.ai_assertion_dsl`。
 
 生成路径：
 
@@ -170,7 +176,7 @@ curl http://127.0.0.1:8000/api/v1/health
 
 ## 后续后端开发计划
 
-- 第 11 阶段：真实 AI 大模型接入
+- 第 11 阶段：真实 AI 大模型接入与可执行测试用例生成（已完成）
 - 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强
 - 第 14 阶段：CI/CD、定时任务与权限系统

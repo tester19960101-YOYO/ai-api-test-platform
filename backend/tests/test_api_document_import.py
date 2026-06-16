@@ -1,5 +1,6 @@
-from collections.abc import Generator
+﻿from collections.abc import Generator
 import json
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import requests
@@ -125,7 +126,7 @@ def test_preview_openapi_json_text_and_save_selected() -> None:
             "/rainfall/add": {
                 "post": {
                     "tags": ["rainfall"],
-                    "summary": "新增雨量",
+                    "summary": "鏂板闆ㄩ噺",
                     "operationId": "addRainfall",
                     "requestBody": {
                         "content": {
@@ -140,7 +141,7 @@ def test_preview_openapi_json_text_and_save_selected() -> None:
             "/rainfall/list": {
                 "get": {
                     "tags": ["rainfall"],
-                    "summary": "雨量列表",
+                    "summary": "闆ㄩ噺鍒楄〃",
                     "responses": {"200": {"description": "ok"}},
                 }
             },
@@ -186,7 +187,62 @@ def test_preview_openapi_json_text_and_save_selected() -> None:
     assert saved_data["endpoints"][0]["path"] == "/rainfall/add"
 
 
-def test_openapi_ref_expansion_examples_and_ai_generation() -> None:
+def test_openapi_ref_expansion_examples_and_ai_generation(monkeypatch) -> None:
+    captured: dict = {}
+    ai_payload = {
+        "test_cases": [
+            {
+                "type": "normal",
+                "name": "create device normal",
+                "request": {
+                    "headers": {},
+                    "query": {"debug": False},
+                    "path": {"id": "1001"},
+                    "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                },
+                "assertions": ["status_code == 200", "$.code == 200"],
+            },
+            {
+                "type": "error",
+                "name": "create device error",
+                "request": {"headers": {}, "query": {}, "path": {"id": ""}, "body": {}},
+                "assertions": ["status_code == 400"],
+            },
+            {
+                "type": "boundary",
+                "name": "create device boundary",
+                "request": {
+                    "headers": {},
+                    "query": {"debug": False},
+                    "path": {"id": "0"},
+                    "body": {"name": "雨量监测仪", "params": {"threshold": 0}, "tags": ["rain"]},
+                },
+                "assertions": ["status_code == 200"],
+            },
+        ]
+    }
+
+    class FakeCompletions:
+        def create(self, **kwargs: object) -> object:
+            captured["create_kwargs"] = kwargs
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content=json.dumps(ai_payload, ensure_ascii=False))
+                    )
+                ]
+            )
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs: object) -> None:
+            captured["client_kwargs"] = kwargs
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_api_base_url", "https://api.openai.com/v1")
+    monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_api_key", "sk-test")
+    monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_model_name", "gpt-4o-mini")
+    monkeypatch.setattr("app.ai.clients.openai_client.OpenAI", FakeOpenAI)
+
     client = build_client()
     project = client.post("/api/v1/projects", json={"name": "Ref Project"}).json()["data"]
     openapi_content = {
@@ -196,7 +252,7 @@ def test_openapi_ref_expansion_examples_and_ai_generation() -> None:
             "/devices/{id}": {
                 "post": {
                     "tags": ["device"],
-                    "summary": "创建设备",
+                    "summary": "鍒涘缓璁惧",
                     "operationId": "createDevice",
                     "parameters": [
                         {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}, "example": "1001"},
@@ -311,7 +367,7 @@ def test_preview_doc_html_url_auto_discovers_openapi(monkeypatch) -> None:
             "/saw/rainfallmonitor/add": {
                 "post": {
                     "tags": ["yingji"],
-                    "summary": "新增雨量监测",
+                    "summary": "鏂板闆ㄩ噺鐩戞祴",
                     "operationId": "addRainfallMonitor",
                     "responses": {"200": {"description": "ok"}},
                 }
@@ -339,7 +395,7 @@ def test_preview_doc_html_url_auto_discovers_openapi(monkeypatch) -> None:
         json={
             "name": "Knife4j Preview",
             "input_type": "auto",
-            "input_content": "http://example.test/doc.html#/yingji/雨量监测控制器/add_13",
+            "input_content": "http://example.test/doc.html#/yingji/闆ㄩ噺鐩戞祴鎺у埗鍣?add_13",
             "api_path_filter": "/saw/rainfallmonitor/add",
             "method_filter": "POST",
             "need_ai_parse": True,
@@ -349,7 +405,7 @@ def test_preview_doc_html_url_auto_discovers_openapi(monkeypatch) -> None:
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["resolved_spec_url"] == "http://example.test/v3/api-docs"
-    assert data["hash_hint"] == "/yingji/雨量监测控制器/add_13"
+    assert data["hash_hint"] == "/yingji/闆ㄩ噺鐩戞祴鎺у埗鍣?add_13"
     assert data["matched_endpoint_count"] == 1
     assert data["endpoints"][0]["path"] == "/saw/rainfallmonitor/add"
 
@@ -365,7 +421,7 @@ def test_preview_doc_html_uses_cookie_for_group_candidates_and_does_not_return_c
             "/saw/rainfallmonitor/add": {
                 "post": {
                     "tags": ["yingji"],
-                    "summary": "新增雨量监测",
+                    "summary": "鏂板闆ㄩ噺鐩戞祴",
                     "operationId": "addRainfallMonitor",
                     "responses": {"200": {"description": "ok"}},
                 }
@@ -390,7 +446,7 @@ def test_preview_doc_html_uses_cookie_for_group_candidates_and_does_not_return_c
         captured.append((url, cookie))
         if url.endswith("/v3/api-docs/yingji") and cookie == "JSESSIONID=abc; SESSION=xyz":
             return FakeResponse(openapi_content)
-        return FakeResponse({"code": 401, "msg": "未能读取到有效 token", "data": None})
+        return FakeResponse({"code": 401, "msg": "鏈兘璇诲彇鍒版湁鏁?token", "data": None})
 
     monkeypatch.setattr(requests, "get", fake_get)
     response = client.post(
@@ -398,7 +454,7 @@ def test_preview_doc_html_uses_cookie_for_group_candidates_and_does_not_return_c
         json={
             "name": "Cookie Knife4j Preview",
             "input_type": "auto",
-            "input_content": "http://example.test/doc.html#/yingji/雨量监测控制器/add_13",
+            "input_content": "http://example.test/doc.html#/yingji/闆ㄩ噺鐩戞祴鎺у埗鍣?add_13",
             "api_path_filter": "/saw/rainfallmonitor/add",
             "method_filter": "POST",
             "cookie": "Cookie: JSESSIONID=abc; SESSION=xyz",
@@ -419,7 +475,7 @@ def test_preview_doc_html_uses_cookie_for_group_candidates_and_does_not_return_c
         json={
             "name": "Cookie Knife4j Save",
             "input_type": "auto",
-            "input_content": "http://example.test/doc.html#/yingji/雨量监测控制器/add_13",
+            "input_content": "http://example.test/doc.html#/yingji/闆ㄩ噺鐩戞祴鎺у埗鍣?add_13",
             "api_path_filter": "/saw/rainfallmonitor/add",
             "method_filter": "POST",
             "cookie": "JSESSIONID=abc; SESSION=xyz",
@@ -455,7 +511,7 @@ def test_preview_doc_html_auth_warning_without_cookie(monkeypatch) -> None:
         json={
             "name": "Auth Warning",
             "input_type": "auto",
-            "input_content": "http://example.test/doc.html#/yingji/雨量监测控制器/add_13",
+            "input_content": "http://example.test/doc.html#/yingji/闆ㄩ噺鐩戞祴鎺у埗鍣?add_13",
             "need_ai_parse": True,
         },
     )
@@ -463,7 +519,7 @@ def test_preview_doc_html_auth_warning_without_cookie(monkeypatch) -> None:
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["matched_endpoint_count"] == 0
-    assert any("需要登录态" in warning for warning in data["warnings"])
+    assert any("登录态" in warning for warning in data["warnings"])
     assert any("401/403" in error for error in data["errors"])
 
 

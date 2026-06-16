@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.schemas.test_case import TestCaseRead
 
 
-CaseType = Literal["normal", "exception", "boundary", "auth"]
+CaseType = Literal["normal", "error", "boundary"]
 
 
 class GeneratedStep(BaseModel):
@@ -33,16 +33,17 @@ class GeneratedCase(BaseModel):
 
 class GeneratedTestcaseOutput(BaseModel):
     model_name: str = Field(..., min_length=1, max_length=128)
+    provider: str | None = Field(default=None, max_length=32)
     endpoint: dict[str, Any]
-    cases: list[GeneratedCase] = Field(..., min_length=4)
+    cases: list[GeneratedCase] = Field(..., min_length=3)
 
     @field_validator("cases")
     @classmethod
     def validate_case_types(cls, value: list[GeneratedCase]) -> list[GeneratedCase]:
         case_types = {case.case_type for case in value}
-        required_types = {"normal", "exception", "boundary", "auth"}
-        if case_types != required_types:
-            raise ValueError("generated cases must include normal, exception, boundary, and auth")
+        required_types = {"normal", "error", "boundary"}
+        if not required_types.issubset(case_types):
+            raise ValueError("generated cases must include normal, error, and boundary")
         return value
 
 

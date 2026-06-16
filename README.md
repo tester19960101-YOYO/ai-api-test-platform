@@ -1,24 +1,28 @@
 # AI API Test Platform
 
-AI API Test Platform / AI 接口自动化测试平台，用于管理接口资产、导入和解析接口文档、使用 mock AI 生成结构化接口测试用例，并通过 Pytest + Requests 执行接口自动化测试。
+## 当前阶段统一口径
 
-当前 MVP 主流程已跑通并固化为 `v0.1.0-mvp`。第 9 阶段已完成“多形态接口输入导入与 AI 辅助解析”，并收尾标记为 `v0.1.0-stage9`。第 10 阶段已归档为 `v0.10.0`。第 10.1 阶段已完成断言系统融合引擎和 DSL 可视化系统，当前版本为 `v0.10.2`，适合演示和继续迭代。
+- 第10阶段：鉴权 + 基础断言（已完成）
+- 第10.1阶段：DSL + AI断言融合（已完成）
+- 第10.2阶段：执行引擎可观测（已完成/稳定）
+
+说明：第10.2阶段当前以执行稳定性、错误兜底、请求/响应/断言结果留痕、日志与报告路径可查看为准；当前不提供独立追踪编号或单独查询接口。
 
 ## 当前阶段
 
-已完成第 1-10 阶段：
+已完成第 1-10.2 阶段：
 
 - 第 1 阶段：项目骨架、后端基础工程、数据库表、SQLAlchemy models、健康检查、基础文档。
 - 第 2 阶段：项目、环境、接口资产、测试用例基础 CRUD。
 - 第 3 阶段：Swagger/OpenAPI JSON、文件、URL 和 curl 导入解析。
-- 第 4 阶段：mock AI 用例生成。
+- 第 4 阶段：AI 用例生成。
 - 第 5 阶段：Pytest + Requests 基础执行引擎。
-- 第 6 阶段：Vue3 前端 MVP 页面。
-- 第 7 阶段：MVP 联调验收与缺陷修复。
-- 第 8 阶段：MVP 基线固化与演示准备，版本为 `v0.1.0-mvp`。
+- 第 6 阶段：Vue3 前端业务页面。
+- 第 7 阶段：主流程联调验收与缺陷修复。
+- 第 8 阶段：历史基线固化与演示准备（已归档）。
 - 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
-- 第 10 阶段：鉴权配置与业务断言增强。
-- 第 10.1 阶段：断言系统2.0，融合 AI 建议、Swagger 基础断言和用户断言，并上线 DSL 可视化断言编辑器。
+- 第 10 阶段：鉴权 + 基础断言（已完成）。
+- 第 10.1 阶段：DSL + AI 断言融合（已完成）。
 
 ## 技术栈
 
@@ -70,7 +74,7 @@ ai-api-test-platform/
 
 ## 已完成内容
 
-- 9 张 MVP 核心表：`project`、`environment`、`api_document`、`api_endpoint`、`test_case`、`execution_task`、`execution_result`、`test_report`、`ai_analysis_record`
+- 9 张核心表：`project`、`environment`、`api_document`、`api_endpoint`、`test_case`、`execution_task`、`execution_result`、`test_report`、`ai_analysis_record`
 - FastAPI 后端基础工程、统一响应、统一异常、基础日志、健康检查
 - 项目、环境、接口资产、测试用例基础 CRUD
 - Swagger/OpenAPI、curl 导入解析
@@ -84,9 +88,9 @@ ai-api-test-platform/
 - 接口导入第 3 步提供左侧接口列表和右侧接口详情区，支持参数 JSON、Body JSON、响应 JSON 的“展开示例 / 展开 Schema”切换和保存预览修改
 - “仅预览不保存”“保存选中接口”“保存全部接口”
 - 未找到已有接口资产时创建待完善接口草稿
-- mock AI 用例生成，AI 输出仅为结构化 JSON
+- 真实 AI 用例生成，AI 输出仅为结构化 JSON，并标准化为可执行测试用例
 - Pytest + Requests 执行引擎、pytest-html 报告、执行日志
-- Vue3 前端 MVP 页面和接口联调入口
+- Vue3 前端业务页面和接口联调入口
 - 执行报告页支持多选测试用例执行，并可展开单条结果查看请求参数 JSON、响应体 JSON 和 curl 命令，支持复制
 - 环境配置支持 `auth_type`、`token`、`cookie`、公共 headers、`auth_config_json`、timeout 和 retry 配置
 - 执行测试时自动合并环境公共 headers、环境鉴权 headers 和用例请求 headers
@@ -100,7 +104,7 @@ ai-api-test-platform/
 
 ## 暂未实现内容
 
-- 未接真实大模型，当前仍为 mock AI
+- 已支持通过 OpenAI-compatible Chat Completions 接入真实大模型；未配置 AI_API_KEY 时用例生成接口会返回配置错误
 - 未实现 AI 凭 HTML 页面自动还原完整接口结构
 - 未实现复杂接口依赖编排
 - 未实现复杂 token/cookie 自动刷新
@@ -193,8 +197,8 @@ POST /api/v1/projects/{project_id}/documents/import-url
 - 有结构化文档时优先使用 OpenAPI/Swagger 解析。
 - Cookie 只用于本次预览或导入请求，默认不保存到数据库，也不会在接口响应中返回。
 - 文档示例与 Schema 展开结果可能存在差异，用户可在预览页编辑确认后保存。
-- 保存后的接口资产会继续用于 AI mock 测试用例生成。
-- AI 只做 mock 辅助提示，不凭空编造接口参数。
+- 保存后的接口资产会继续用于真实 AI 测试用例生成。
+- AI 只基于结构化接口资产生成测试用例，不直接生成自由 Python 代码。
 - 保存前支持预览、筛选和编辑确认。
 - 不会导入后自动生成测试用例。
 - 不支持自动登录、验证码、SSO 或浏览器自动化登录；如果 Cookie 过期，需要用户重新复制 Cookie。
@@ -248,7 +252,7 @@ user > swagger > ai
 - `business_code` 支持 `success_codes` 和 `success_expression`，不再写死 1。
 - `$.data` 相关断言仅在业务成功后执行。
 
-## v0.10.2 断言 DSL 可视化系统
+## 第 10.1 阶段 断言 DSL 可视化系统
 
 DSL 是唯一用户断言语言，JSON 断言结构只在执行层内部使用。
 
@@ -333,7 +337,7 @@ npm run dev
 8. 按四步向导完成“选择导入方式 -> 解析与预览 -> 选择与编辑 -> 导入结果”。
 9. 在第 3 步按条件筛选、勾选接口、编辑确认 JSON 后，保存选中接口或保存全部接口。
 10. 查看接口资产。
-11. 选择接口生成 mock AI 测试用例。
+11. 选择接口调用真实 AI 生成可执行测试用例。
 12. 管理测试用例。
 13. 在执行报告页多选测试用例并执行测试。
 14. 展开单条执行结果，查看并复制请求参数 JSON、响应体 JSON 和 curl 命令。
@@ -341,10 +345,38 @@ npm run dev
 
 ## 下一阶段建议
 
-- 第 11 阶段：真实 AI 大模型接入
 - 第 12 阶段：接口依赖关系与链路用例
 - 第 13 阶段：报告和失败分析增强
 - 第 14 阶段：CI/CD、定时任务与权限系统
+
+## 第 11 阶段真实 AI 用例生成
+
+当前已支持通过 OpenAI-compatible Chat Completions 接口调用真实大模型生成可执行测试用例。
+
+配置项位于 `backend/.env`：
+
+```text
+AI_API_BASE_URL="https://api.openai.com/v1"
+AI_API_KEY="your-api-key"
+AI_MODEL_NAME="gpt-4o-mini"
+AI_REQUEST_TIMEOUT=60
+```
+
+生成接口保持不变：
+
+```text
+POST /api/v1/endpoints/{endpoint_id}/testcases/generate
+```
+
+AI 输出必须是结构化 JSON，并会被标准化为：
+
+- `normal` 正常用例
+- `error` 异常用例
+- `boundary` 边界用例
+- `test_case.steps` 可执行请求结构
+- `test_case.variables.ai_assertion_dsl` DSL 断言建议
+
+本阶段不修改 execution_engine，不新增数据库表，不让 AI 生成自由 Python 代码。未配置 `AI_API_KEY` 时，用例生成接口会返回配置错误。
 
 ## 执行引擎稳定性修复
 
@@ -356,3 +388,71 @@ npm run dev
 - pytest 超时或结果文件单行 JSON 损坏，会记录为 failed 结果。
 - `business_code` 不写死为 1，继续使用 `success_codes` 或 `success_expression`。
 - JSON 断言结构只用于后端执行层内部；用户侧仍以 DSL 为主要断言语言。
+## 第11阶段 OpenAI 真实模型接入专项修复
+
+当前 `POST /api/v1/endpoints/{endpoint_id}/testcases/generate` 已切换为真实 OpenAI Python SDK 调用链路。生产/开发运行时不再因为 `AI_API_KEY` 缺失而静默 fallback 到 mock 用例。
+
+后端配置位于 `backend/.env`：
+
+```text
+AI_API_KEY=sk-xxxx
+AI_API_BASE_URL=https://api.openai.com/v1
+AI_MODEL_NAME=gpt-4o-mini
+AI_REQUEST_TIMEOUT=60
+```
+
+生成规则：
+
+- `AI_API_KEY` 缺失时返回明确错误：`AI_API_KEY 未配置，无法调用真实 OpenAI`。
+- mock/fake LLM 仅允许在单元测试中通过 monkeypatch 或显式测试替身使用，不作为运行时兜底。
+- OpenAI 输出必须是结构化 JSON，根节点必须包含 `test_cases` 数组。
+- 每条用例必须包含 `name`、`type`、`request`、`assertions`。
+- `type` 仅允许 `normal`、`error`、`boundary`。
+- `request` 必须包含 `headers`、`query`、`path`、`body` 四类对象。
+- `assertions` 必须是 DSL 字符串数组，例如 `["status_code == 200", "$.code == 200"]`。
+- 模型返回非 JSON 或结构不合法时不会保存半成品测试用例。
+- 本阶段不修改 execution_engine，不改变 DSL 语法，不新增数据库结构。
+
+## 第11阶段多模型接入：OpenAI / Qwen
+
+AI 用例生成现在通过统一工厂层创建模型客户端：
+
+```text
+backend/app/ai/llm_factory.py
+```
+
+调用链路：
+
+```text
+testcases/generate
+  -> TestcaseGeneratorAgent
+  -> LLMFactory
+  -> OpenAIClient 或 QwenClient
+  -> 统一 JSON 校验
+  -> test_case / ai_analysis_record
+```
+
+配置 OpenAI：
+
+```text
+AI_PROVIDER=openai
+AI_API_BASE_URL=https://api.openai.com/v1
+AI_API_KEY=sk-xxxx
+AI_MODEL_NAME=gpt-4o-mini
+```
+
+配置 Qwen / DashScope：
+
+```text
+AI_PROVIDER=qwen
+AI_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+AI_API_KEY=sk-xxxx
+AI_MODEL_NAME=qwen-max-latest
+```
+
+约束：
+
+- 业务层不直接调用 OpenAI SDK，也不判断模型供应商。
+- Qwen compatible mode 不传 `response_format`，由后端做 JSON 强校验。
+- 不允许 mock fallback，不允许静默降级。
+- 两类模型输出都必须标准化为 `test_cases` 数组和 DSL 字符串断言。
