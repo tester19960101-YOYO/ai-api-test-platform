@@ -11,6 +11,7 @@ from app.models.environment import Environment
 from app.models.execution_task import ExecutionTask
 from app.models.project import Project
 from app.models.test_case import TestCase
+from app.services.test_case_unified_model import test_case_to_unified_dict
 
 
 class PytestProjectGenerator:
@@ -75,22 +76,28 @@ class PytestProjectGenerator:
         return output_dir
 
     def _build_case_data(self, test_case: TestCase, timeout: int) -> dict[str, Any]:
-        steps = test_case.steps or []
-        if not steps:
-            steps = [{"name": test_case.name, "request": {}}]
+        unified = test_case_to_unified_dict(test_case)
+        request_data = dict(unified.get("request") or {})
+        steps = [{"name": f"{request_data.get('method', 'GET')} {request_data.get('path', '/')}", "request": request_data}]
 
         return {
             "id": test_case.id,
             "name": test_case.name,
             "description": test_case.description,
             "api_endpoint_id": test_case.api_endpoint_id,
-            "priority": test_case.priority,
-            "variables": test_case.variables or {},
+            "priority": unified["priority"],
+            "type": unified["type"],
+            "coverage_tag": unified["coverage_tag"],
+            "risk_level": unified["risk_level"],
+            "variables": {
+                **(test_case.variables or {}),
+                "unified_model": unified,
+            },
             "steps": [self._normalize_step(step, timeout) for step in steps],
             "assertions": test_case.assertions or [],
             "swagger_assertions": self._build_swagger_assertions(test_case),
             "ai_assertions": self._build_ai_assertions(test_case),
-            "user_assertions": normalize_user_assertions(test_case.assertions or []),
+            "user_assertions": normalize_user_assertions(test_case.assertions or test_case.dsl_assertions or []),
             "final_assertions": self._build_final_assertions(test_case),
         }
 
@@ -127,15 +134,18 @@ class PytestProjectGenerator:
         return build_swagger_assertions(test_case.api_endpoint)
 
     def _build_ai_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
+        ai_metadata = test_case.ai_metadata or {}
         variables = test_case.variables or {}
+        if isinstance(ai_metadata.get("dsl_assertions"), list):
+            return normalize_ai_suggestions({"assertions": ai_metadata.get("dsl_assertions")})
         if "ai_assertion_dsl" in variables:
             return normalize_ai_suggestions({"assertions": variables.get("ai_assertion_dsl")})
-        return normalize_ai_suggestions(variables.get("ai_assertion_suggestions") or {})
+        return normalize_ai_suggestions({"assertions": test_case.dsl_assertions or []})
 
     def _build_final_assertions(self, test_case: TestCase) -> list[dict[str, Any]]:
         fused = fuse_assertions(
             swagger_assertions=self._build_swagger_assertions(test_case),
             ai_assertions=self._build_ai_assertions(test_case),
-            user_assertions=normalize_user_assertions(test_case.assertions or []),
+            user_assertions=normalize_user_assertions(test_case.assertions or test_case.dsl_assertions or []),
         )
         return fused["final_assertions"]

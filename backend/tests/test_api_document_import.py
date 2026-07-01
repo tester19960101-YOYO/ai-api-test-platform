@@ -190,36 +190,151 @@ def test_preview_openapi_json_text_and_save_selected() -> None:
 def test_openapi_ref_expansion_examples_and_ai_generation(monkeypatch) -> None:
     captured: dict = {}
     ai_payload = {
-        "test_cases": [
-            {
-                "type": "normal",
-                "name": "create device normal",
-                "request": {
-                    "headers": {},
-                    "query": {"debug": False},
-                    "path": {"id": "1001"},
-                    "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
-                },
-                "assertions": ["status_code == 200", "$.code == 200"],
-            },
-            {
-                "type": "error",
-                "name": "create device error",
-                "request": {"headers": {}, "query": {}, "path": {"id": ""}, "body": {}},
-                "assertions": ["status_code == 400"],
-            },
-            {
-                "type": "boundary",
-                "name": "create device boundary",
-                "request": {
-                    "headers": {},
-                    "query": {"debug": False},
-                    "path": {"id": "0"},
-                    "body": {"name": "雨量监测仪", "params": {"threshold": 0}, "tags": ["rain"]},
-                },
-                "assertions": ["status_code == 200"],
-            },
-        ]
+        "test_strategy": {
+            "normal": [
+                    {
+                        "name": "create device normal",
+                        "purpose": "Verify a valid device can be created.",
+                        "coverage_dimension": "functional",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                        "path": {"id": "1001"},
+                        "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                    },
+                    "assertions": ["status_code == 200", "$.code == 200"],
+                        "risk_level": "P1",
+                        "reason": "Device creation is the primary business path.",
+                    },
+                    {
+                        "name": "create device business semantic",
+                        "purpose": "Verify business response fields indicate success.",
+                        "coverage_dimension": "business",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "1001"},
+                            "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                        },
+                        "assertions": ["status_code == 200", "$.code == 200", "$.data != null"],
+                        "risk_level": "P1",
+                        "reason": "Business response may fail while HTTP remains successful.",
+                    },
+                    {
+                        "name": "create device dependency",
+                        "purpose": "Verify creation with required upstream identifier.",
+                        "coverage_dimension": "dependency",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "1001"},
+                            "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                        },
+                        "assertions": ["status_code == 200"],
+                        "risk_level": "P2",
+                        "reason": "The API depends on a valid path id and request body data.",
+                    }
+                ],
+                "error": [
+                    {
+                        "name": "create device missing id",
+                        "purpose": "Verify missing path id is rejected.",
+                        "coverage_dimension": "validation",
+                        "request": {"headers": {}, "query": {}, "path": {"id": ""}, "body": {}},
+                        "assertions": ["status_code == 400"],
+                        "risk_level": "P1",
+                        "reason": "Required path parameter validation must be covered.",
+                    },
+                    {
+                        "name": "create device missing name",
+                        "purpose": "Verify required body name is rejected.",
+                        "coverage_dimension": "validation",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "1001"},
+                            "body": {"params": {"threshold": 10}, "tags": ["rain"]},
+                        },
+                        "assertions": ["status_code == 400"],
+                        "risk_level": "P1",
+                        "reason": "Required body field validation must be covered.",
+                    },
+                    {
+                        "name": "create device malformed body",
+                        "purpose": "Verify malformed body is rejected.",
+                        "coverage_dimension": "negative",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "1001"},
+                            "body": {"name": "", "params": {}, "tags": []},
+                        },
+                        "assertions": ["status_code == 400"],
+                        "risk_level": "P1",
+                        "reason": "Negative request body should not create invalid devices.",
+                    },
+                    {
+                        "name": "create device invalid id",
+                        "purpose": "Verify invalid path id is rejected.",
+                        "coverage_dimension": "negative",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "../admin"},
+                            "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                        },
+                        "assertions": ["status_code == 400"],
+                        "risk_level": "P1",
+                        "reason": "Invalid path values should be rejected safely.",
+                    }
+                ],
+                "boundary": [
+                    {
+                        "name": "create device threshold zero",
+                        "purpose": "Verify boundary threshold value is handled.",
+                        "coverage_dimension": "boundary",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                        "path": {"id": "0"},
+                        "body": {"name": "雨量监测仪", "params": {"threshold": 0}, "tags": ["rain"]},
+                    },
+                        "assertions": ["status_code == 200"],
+                        "risk_level": "P2",
+                        "reason": "Numeric boundary values often cause business defects.",
+                    },
+                    {
+                        "name": "create device threshold max",
+                        "purpose": "Verify maximum threshold value is handled.",
+                        "coverage_dimension": "boundary",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                            "path": {"id": "1001"},
+                            "body": {"name": "雨量监测仪", "params": {"threshold": 2147483647}, "tags": ["rain"]},
+                        },
+                        "assertions": ["status_code == 200"],
+                        "risk_level": "P2",
+                        "reason": "Large numeric values can expose overflow or range defects.",
+                    }
+                ],
+                "security": [
+                    {
+                        "name": "create device without auth",
+                        "purpose": "Verify unauthorized request is rejected.",
+                        "coverage_dimension": "security",
+                        "request": {
+                            "headers": {},
+                            "query": {"debug": False},
+                        "path": {"id": "1001"},
+                        "body": {"name": "雨量监测仪", "params": {"threshold": 10}, "tags": ["rain"]},
+                    },
+                    "assertions": ["status_code == 401"],
+                    "risk_level": "P0",
+                    "reason": "Unauthorized creation can cause high-impact data risk.",
+                }
+            ],
+        }
     }
 
     class FakeCompletions:
@@ -238,6 +353,7 @@ def test_openapi_ref_expansion_examples_and_ai_generation(monkeypatch) -> None:
             captured["client_kwargs"] = kwargs
             self.chat = SimpleNamespace(completions=FakeCompletions())
 
+    monkeypatch.setattr("app.ai.llm_factory.settings.ai_provider", "openai")
     monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_api_base_url", "https://api.openai.com/v1")
     monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_api_key", "sk-test")
     monkeypatch.setattr("app.ai.clients.openai_client.settings.ai_model_name", "gpt-4o-mini")
@@ -354,7 +470,9 @@ def test_openapi_ref_expansion_examples_and_ai_generation(monkeypatch) -> None:
     ai_response = client.post(f"/api/v1/endpoints/{saved_endpoint['id']}/testcases/generate")
     assert ai_response.status_code == 200
     generated_case = ai_response.json()["data"]["test_cases"][0]
-    assert generated_case["steps"][0]["request"]["body"]["name"] == "雨量监测仪"
+    assert generated_case["request"]["body"]["name"] == "雨量监测仪"
+    assert generated_case["endpoint"]["id"] == saved_endpoint["id"]
+    assert generated_case["dsl_assertions"]
 
 
 def test_preview_doc_html_url_auto_discovers_openapi(monkeypatch) -> None:

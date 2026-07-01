@@ -140,7 +140,7 @@ def test_api_endpoint_and_test_case_crud() -> None:
         f"/api/v1/test-cases/{test_case_id}",
         json={"priority": "high", "status": "active"},
     )
-    assert update_case_response.json()["data"]["priority"] == "high"
+    assert update_case_response.json()["data"]["priority"] == "P0"
 
     disable_case_response = client.delete(f"/api/v1/test-cases/{test_case_id}")
-    assert disable_case_response.json()["data"]["status"] == "inactive"
+    assert disable_case_response.json()["data"]["status"] == "disabled"

@@ -128,7 +128,7 @@ def _load_test_cases(db: Session, project_id: int, case_ids: list[int] | None):
     for test_case in test_cases:
         if test_case.project_id != project_id:
             raise HTTPException(status_code=400, detail="test case does not belong to project")
-        if test_case.status not in {"active", "draft", "generated"}:
+        if test_case.status not in {"generated", "edited", "passed", "failed"}:
             raise HTTPException(status_code=400, detail=f"test case {test_case.id} is not executable")
     return test_cases
 

@@ -426,7 +426,15 @@ async function preview() {
     selectedKeys.value = editableEndpoints.value.map((item) => item.endpoint_key)
     activeKey.value = editableEndpoints.value[0]?.endpoint_key || ''
     await nextTick()
-    ElMessage.success(`预览完成，匹配 ${previewResult.value.matched_endpoint_count} 个接口`)
+    const authErrors = [...(previewResult.value.errors || []), ...(previewResult.value.warnings || [])].filter((item) => {
+      const text = String(item).toLowerCase()
+      return text.includes('401') || text.includes('403') || text.includes('cookie') || text.includes('access denied')
+    })
+    if (!previewResult.value.matched_endpoint_count && authErrors.length) {
+      ElMessage.error('当前接口文档需要登录态，请填写有效 Cookie 后重新解析')
+    } else {
+      ElMessage.success(`预览完成，匹配 ${previewResult.value.matched_endpoint_count} 个接口`)
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '预览失败')
   } finally {

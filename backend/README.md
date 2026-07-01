@@ -156,7 +156,11 @@ v0.10.2 DSL 增强：
 - 新增 `POST /api/v1/assertion/parse` 和 `POST /api/v1/assertion/to-dsl`。
 - 兼容 `POST /api/assertion/parse` 和 `POST /api/assertion/to-dsl`。
 - 用户断言优先使用 DSL 字符串数组保存。
-- AI 输出 `assertions: string[]`，保存为 `variables.ai_assertion_dsl`。
+- AI 输出 `assertions: string[]`，保存为 `test_case.dsl_assertions`，并同步为内部结构化 `test_case.assertions`。
+
+## TestCaseUnifiedModel v1
+
+后端测试用例当前统一使用 `TestCaseUnifiedModel v1`。新建、查询、AI 生成、编辑和执行输入统一围绕 `request_data`、`assertions`、`dsl_assertions`、`coverage_tag`、`risk_level`、`data_dependency`、`ai_metadata` 等字段。历史 `steps` / `variables` 仅用于旧数据迁移兼容，不作为当前主模型。
 
 生成路径：
 

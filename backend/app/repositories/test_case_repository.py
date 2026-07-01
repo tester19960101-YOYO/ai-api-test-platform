@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.test_case import TestCase
 
@@ -15,6 +15,7 @@ def create_test_case(db: Session, data: dict) -> TestCase:
 def list_test_cases_by_project(db: Session, project_id: int, skip: int = 0, limit: int = 20) -> list[TestCase]:
     statement = (
         select(TestCase)
+        .options(selectinload(TestCase.api_endpoint))
         .where(TestCase.project_id == project_id)
         .order_by(TestCase.id.desc())
         .offset(skip)
@@ -24,11 +25,17 @@ def list_test_cases_by_project(db: Session, project_id: int, skip: int = 0, limi
 
 
 def get_test_case(db: Session, test_case_id: int) -> TestCase | None:
-    return db.get(TestCase, test_case_id)
+    statement = select(TestCase).options(selectinload(TestCase.api_endpoint)).where(TestCase.id == test_case_id)
+    return db.scalars(statement).first()
 
 
 def list_test_cases_by_ids(db: Session, case_ids: list[int]) -> list[TestCase]:
-    statement = select(TestCase).where(TestCase.id.in_(case_ids)).order_by(TestCase.id.asc())
+    statement = (
+        select(TestCase)
+        .options(selectinload(TestCase.api_endpoint))
+        .where(TestCase.id.in_(case_ids))
+        .order_by(TestCase.id.asc())
+    )
     return list(db.scalars(statement).all())
 
 

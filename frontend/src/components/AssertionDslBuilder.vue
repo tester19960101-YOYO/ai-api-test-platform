@@ -75,7 +75,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string[]]
 }>()
 
-const templates = ['$.code == 200', '$.data != null', 'status_code == 200']
+const templates = ['$.code == 200', '$.msg=="操作成功"', '$.data != null', 'status_code == 200']
 const localItems = ref<string[]>([])
 
 const aiItems = computed(() => uniqueItems(props.aiAssertions))

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.schemas.test_case import TestCaseRead
 
 
-CaseType = Literal["normal", "error", "boundary"]
+CaseType = Literal["normal", "error", "boundary", "security"]
 
 
 class GeneratedStep(BaseModel):
@@ -35,15 +35,17 @@ class GeneratedTestcaseOutput(BaseModel):
     model_name: str = Field(..., min_length=1, max_length=128)
     provider: str | None = Field(default=None, max_length=32)
     endpoint: dict[str, Any]
-    cases: list[GeneratedCase] = Field(..., min_length=3)
+    cases: list[GeneratedCase] = Field(..., min_length=10)
+    coverage_matrix: dict[str, Any] | None = None
+    coverage_summary: dict[str, Any] | None = None
 
     @field_validator("cases")
     @classmethod
     def validate_case_types(cls, value: list[GeneratedCase]) -> list[GeneratedCase]:
         case_types = {case.case_type for case in value}
-        required_types = {"normal", "error", "boundary"}
+        required_types = {"normal", "error", "boundary", "security"}
         if not required_types.issubset(case_types):
-            raise ValueError("generated cases must include normal, error, and boundary")
+            raise ValueError("generated cases must include normal, error, boundary, and security")
         return value
 
 
@@ -51,6 +53,8 @@ class AiGenerationResult(BaseModel):
     endpoint_id: int
     analysis_record_id: int
     case_count: int
+    coverage_matrix: dict[str, Any] | None = None
+    coverage_summary: dict[str, Any] | None = None
     test_cases: list[TestCaseRead]
 
     model_config = ConfigDict(from_attributes=True)

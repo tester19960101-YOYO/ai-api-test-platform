@@ -54,13 +54,47 @@ export interface TestCase {
   id: number
   project_id: number
   api_endpoint_id?: number | null
+  endpoint?: {
+    id?: number | null
+    name?: string | null
+    method?: string | null
+    path?: string | null
+  } | null
+  endpoint_name?: string | null
+  endpoint_path?: string | null
   name: string
   description?: string | null
+  type: string
   priority: string
   status: string
-  steps?: unknown[] | null
-  assertions?: unknown[] | null
-  variables?: Record<string, unknown> | null
+  request?: {
+    method?: string | null
+    path?: string | null
+    headers: Record<string, unknown>
+    query: Record<string, unknown>
+    path_params?: Record<string, unknown>
+    body: Record<string, unknown>
+  } | Record<string, unknown> | null
+  request_data?: Record<string, unknown> | null
+  assertions: Array<{
+    type: string
+    path?: string | null
+    operator?: string | null
+    expression?: string | null
+    expected?: unknown
+    description?: string | null
+    success_codes?: unknown[] | null
+    success_expression?: string | null
+  }>
+  dsl_assertions: string[]
+  coverage_tag: string[]
+  risk_level: string
+  data_dependency: Record<string, unknown>
+  ai_metadata: Record<string, unknown>
+  timestamps?: {
+    created_at?: string | null
+    updated_at?: string | null
+  }
   created_at: string
   updated_at: string
 }
@@ -189,6 +223,12 @@ export interface AiGenerationResult {
   endpoint_id: number
   analysis_record_id: number
   case_count: number
+  coverage_matrix?: Record<string, boolean> | null
+  coverage_summary?: {
+    required_dimensions?: string[]
+    counts?: Record<string, number>
+    missing_dimensions?: string[]
+  } | null
   test_cases: TestCase[]
 }
 

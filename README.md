@@ -368,15 +368,15 @@ AI_REQUEST_TIMEOUT=60
 POST /api/v1/endpoints/{endpoint_id}/testcases/generate
 ```
 
-AI 输出必须是结构化 JSON，并会被标准化为：
+AI 输出必须是结构化 JSON，并会被标准化为 `TestCaseUnifiedModel v1`：
 
-- `normal` 正常用例
-- `error` 异常用例
-- `boundary` 边界用例
-- `test_case.steps` 可执行请求结构
-- `test_case.variables.ai_assertion_dsl` DSL 断言建议
+- `type`：`functional`、`validation`、`boundary`、`negative`、`security`、`business`、`dependency`
+- `request`：可执行请求结构，包含 `headers`、`query`、`path_params`、`body`
+- `assertions`：结构化断言，供执行层内部使用
+- `dsl_assertions`：用户侧可编辑的 DSL 断言字符串数组
+- `coverage_tag`、`risk_level`、`ai_metadata`：覆盖维度、风险和 AI 生成元数据
 
-本阶段不修改 execution_engine，不新增数据库表，不让 AI 生成自由 Python 代码。未配置 `AI_API_KEY` 时，用例生成接口会返回配置错误。
+本阶段不让 AI 生成自由 Python 代码。未配置 `AI_API_KEY` 时，用例生成接口会返回配置错误。
 
 ## 执行引擎稳定性修复
 
@@ -405,9 +405,10 @@ AI_REQUEST_TIMEOUT=60
 
 - `AI_API_KEY` 缺失时返回明确错误：`AI_API_KEY 未配置，无法调用真实 OpenAI`。
 - mock/fake LLM 仅允许在单元测试中通过 monkeypatch 或显式测试替身使用，不作为运行时兜底。
-- OpenAI 输出必须是结构化 JSON，根节点必须包含 `test_cases` 数组。
-- 每条用例必须包含 `name`、`type`、`request`、`assertions`。
-- `type` 仅允许 `normal`、`error`、`boundary`。
+- AI 输出必须是结构化 JSON，根节点必须包含 `test_strategy` 对象。
+- `test_strategy` 可继续按 `normal`、`error`、`boundary`、`security` 外层策略分组返回，但每条用例必须带 `coverage_dimension`，后端最终统一映射为 `TestCaseUnifiedModel v1.type`。
+- 每条用例必须包含 `name`、`purpose`、`request`、`assertions`、`risk_level`、`reason`。
+- `risk_level` 仅允许 `P0`、`P1`、`P2`。
 - `request` 必须包含 `headers`、`query`、`path`、`body` 四类对象。
 - `assertions` 必须是 DSL 字符串数组，例如 `["status_code == 200", "$.code == 200"]`。
 - 模型返回非 JSON 或结构不合法时不会保存半成品测试用例。
@@ -455,4 +456,126 @@ AI_MODEL_NAME=qwen-max-latest
 - 业务层不直接调用 OpenAI SDK，也不判断模型供应商。
 - Qwen compatible mode 不传 `response_format`，由后端做 JSON 强校验。
 - 不允许 mock fallback，不允许静默降级。
-- 两类模型输出都必须标准化为 `test_cases` 数组和 DSL 字符串断言。
+- 两类模型输出都必须标准化为 `test_strategy` 测试策略结构和 DSL 字符串断言。
+
+## 第11阶段 AI 测试策略生成增强
+
+AI 生成目标从“随机补数据”调整为“企业级接口测试策略设计”。模型输出必须严格为：
+
+```json
+{
+  "test_strategy": {
+    "normal": [
+      {
+        "name": "正常查询",
+        "purpose": "验证正常用户可以查询成功",
+        "request": {"headers": {}, "query": {}, "path": {}, "body": {}},
+        "assertions": ["status_code == 200", "$.code == 200"],
+        "risk_level": "P1",
+        "reason": "覆盖主业务成功路径"
+      }
+    ],
+    "error": [],
+    "boundary": [],
+    "security": []
+  }
+}
+```
+
+后端校验规则：
+
+- 模型输出必须覆盖 Coverage Engine 要求的 7 类维度，缺失维度会由后端补齐。
+- 单条用例必须包含测试目的、设计原因和风险等级。
+- DSL 断言入库前必须通过 `backend/app/core/assertion_dsl.py` 校验。
+- 不允许 `business_code == 1` 这类写死旧业务码。
+- 校验通过后，后端会标准化为 `TestCaseUnifiedModel v1`，请求保存到 `test_case.request_data`，结构化断言保存到 `test_case.assertions`，DSL 保存到 `test_case.dsl_assertions`，覆盖信息保存到 `test_case.coverage_tag` / `test_case.ai_metadata`，可直接进入执行引擎。
+- 旧 `test_cases` 数组仅作为后端兼容入口保留，不再作为第11阶段主提示词输出规范。
+
+## Test Coverage Engine 1.0
+
+第11阶段新增测试覆盖率引擎：
+
+```text
+backend/app/services/coverage_engine.py
+```
+
+AI 用例生成链路已升级为：
+
+```text
+API Schema
+  -> Coverage Engine
+  -> coverage_matrix / coverage_targets
+  -> AI 按维度生成 test_strategy
+  -> 后端校验覆盖维度
+  -> 标准化 test_case
+  -> Execution Engine
+```
+
+覆盖矩阵固定包含 7 个维度：
+
+```json
+{
+  "coverage_matrix": {
+    "functional": true,
+    "validation": true,
+    "boundary": true,
+    "negative": true,
+    "security": true,
+    "business": true,
+    "dependency": true
+  }
+}
+```
+
+覆盖规则：
+
+- `functional`：1-2 条。
+- `validation`：2-3 条。
+- `boundary`：2 条。
+- `negative`：2-3 条。
+- `security`：1-2 条。
+- `business`：1 条。
+- `dependency`：1 条。
+- 模型输出的每条用例必须包含 `coverage_dimension`。
+- 任一维度缺失或低于最小数量时，后端 Coverage Engine 会自动补齐缺失维度和最小数量，再统一标准化为测试用例。
+- `POST /api/v1/endpoints/{endpoint_id}/testcases/generate` 返回 `coverage_matrix` 和 `coverage_summary`，便于前端展示覆盖情况。
+- 前端 AI 用例生成请求单独设置 120 秒超时，用于兼容真实大模型和 Coverage Engine 生成 10 条左右用例时的较长响应时间；其他普通接口仍使用全局 20 秒超时。
+
+## AI 用例生成接口稳定性说明
+
+本次修复后，`POST /api/v1/endpoints/{endpoint_id}/testcases/generate` 针对真实大模型响应做了两类稳定性处理：
+
+- 前端 `AI 用例生成` 请求单独使用 120 秒超时，避免真实模型和覆盖率补齐流程超过全局 20 秒超时后在浏览器 Network 中显示 `canceled`。
+- 后端标准化阶段会校验 AI 返回的 DSL 断言。如果模型返回无法解析的 DSL 字符串，会丢弃该条非法断言，并按当前 `coverage_dimension` 补入默认安全断言，避免异常冒泡为 500。
+
+接口成功返回时会包含 `coverage_matrix` 和 `coverage_summary`。前端 AI 用例生成页会在用例表格上方展示“测试覆盖率”卡片；如果请求被取消或生成失败，则不会展示该卡片。
+
+## TestCaseUnifiedModel v1
+
+当前测试用例统一使用 `TestCaseUnifiedModel v1` 作为 AI 生成、手工编辑、执行引擎和报告展示之间的数据契约。
+
+核心字段：
+
+- `endpoint`：接口 ID、名称、方法和路径。
+- `type`：`functional`、`validation`、`boundary`、`negative`、`security`、`business`、`dependency`。
+- `priority`：`P0`、`P1`、`P2`。
+- `status`：`generated`、`edited`、`disabled`、`passed`、`failed`。
+- `request` / `request_data`：统一请求结构。
+- `assertions`：内部结构化断言。
+- `dsl_assertions`：前端展示和编辑的 DSL 断言。
+- `coverage_tag`：覆盖维度标签。
+- `risk_level`：`low`、`medium`、`high`。
+- `data_dependency`：数据依赖说明。
+- `ai_metadata`：AI 生成来源、模型、目的、原因和覆盖来源。
+
+历史 `steps` / `variables` 字段仅用于旧数据迁移和兼容读取，不作为当前前端展示和新用例生成的主结构。
+
+### 测试用例页面兼容修复
+
+当前测试用例列表、AI 用例生成页、执行报告页均通过后端统一模型读取测试用例数据：
+
+- `GET /api/v1/projects/{project_id}/test-cases` 和 `GET /api/v1/testcases?project_id={project_id}` 均可返回统一测试用例结构。
+- 历史测试用例的 `steps` / `variables` 会在后端读取时转换为 `request`、`dsl_assertions`、`coverage_tag`、`ai_metadata` 等统一字段。
+- 前端编辑抽屉会展示请求参数、用户断言 DSL、AI 断言建议和结构化断言预览。
+- 断言 DSL 模板包含 `$.code == 200`、`$.msg=="操作成功"`、`$.data != null`、`status_code == 200`。
+- 接口导入预览遇到 401/403 时会提示用户检查 Cookie，不会把登录态失败误判为平台接口 404。

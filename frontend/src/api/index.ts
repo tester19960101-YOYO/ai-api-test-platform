@@ -64,7 +64,7 @@ export const testCaseApi = {
 
 export const aiApi = {
   generateCases: (endpointId: number) =>
-    request<AiGenerationResult>(http.post(`/endpoints/${endpointId}/testcases/generate`))
+    request<AiGenerationResult>(http.post(`/endpoints/${endpointId}/testcases/generate`, undefined, { timeout: 120000 }))
 }
 
 export const executionApi = {
