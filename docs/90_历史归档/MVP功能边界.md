@@ -1,104 +1,104 @@
 ⚠️ 已归档，仅用于历史参考
 
-# MVP 鍔熻兘杈圭晫
+# MVP 功能边界
 
-## MVP 绗竴鐗堝仛浠€涔?
+## MVP 第一版做什么
 
-MVP 绗竴鐗堝疄鐜颁竴涓彲婕旂ず銆佸彲缁х画杩唬鐨?AI 鎺ュ彛鑷姩鍖栨祴璇曞钩鍙伴棴鐜細
+MVP 第一版实现一个可演示、可继续迭代的 AI 接口自动化测试平台闭环：
 
-- 椤圭洰绠＄悊
-- 鐜閰嶇疆
-- 鎺ュ彛鏂囨。瀵煎叆涓庤В鏋?
-- 鎺ュ彛璧勪骇绠＄悊
-- mock AI 鐢ㄤ緥鐢熸垚
-- 娴嬭瘯鐢ㄤ緥绠＄悊
-- Pytest + Requests 鎵ц
-- 鎵ц缁撴灉涓庢祴璇曟姤鍛婃煡鐪?
-- Vue3 鍓嶇 MVP 椤甸潰
+- 项目管理
+- 环境配置
+- 接口文档导入与解析
+- 接口资产管理
+- mock AI 用例生成
+- 测试用例管理
+- Pytest + Requests 执行
+- 执行结果与测试报告查看
+- Vue3 前端 MVP 页面
 
-## MVP 绗竴鐗堜笉鍋氫粈涔?
+## MVP 第一版不做什么
 
-- 涓嶆帴鐪熷疄澶фā鍨?
-- 涓嶈 AI 鐩存帴鐢熸垚鑷敱 Python 浠ｇ爜
-- 涓嶆牴鎹?HTML 椤甸潰鍑┖缂栭€犳帴鍙ｅ弬鏁?
-- 涓嶅仛澶嶆潅鎺ュ彛渚濊禆缂栨帓
-- 涓嶅仛澶嶆潅 token/cookie 鑷姩鍒锋柊
-- 涓嶅仛 Word/PDF 瑙ｆ瀽
-- 涓嶅仛鏉冮檺绯荤粺銆丼SO銆佸鐢ㄦ埛鍗忎綔
-- 涓嶅仛 CI/CD銆佸畾鏃朵换鍔?
-- 涓嶅仛 WebSocket 瀹炴椂鏃ュ織
-- 涓嶅仛鐢熶骇绾ч儴缃叉柟妗?
+- 不接真实大模型
+- 不让 AI 直接生成自由 Python 代码
+- 不根据 HTML 页面凭空编造接口参数
+- 不做复杂接口依赖编排
+- 不做复杂 token/cookie 自动刷新
+- 不做 Word/PDF 解析
+- 不做权限系统、SSO、多用户协作
+- 不做 CI/CD、定时任务
+- 不做 WebSocket 实时日志
+- 不做生产级部署方案
 
-## 宸插畬鎴愰樁娈?
+## 已完成阶段
 
-- 绗?1 闃舵锛氶」鐩鏋躲€佸悗绔熀纭€宸ョ▼銆佹暟鎹簱琛ㄣ€丼QLAlchemy models銆佸仴搴锋鏌ャ€佸熀纭€鏂囨。銆?
-- 绗?2 闃舵锛氶」鐩€佺幆澧冦€佹帴鍙ｈ祫浜с€佹祴璇曠敤渚嬪熀纭€ CRUD銆?
-- 绗?3 闃舵锛歋wagger/OpenAPI JSON銆佹枃浠躲€乁RL 鍜?curl 瀵煎叆瑙ｆ瀽銆?
-- 绗?4 闃舵锛歮ock AI 鐢ㄤ緥鐢熸垚锛屽啓鍏?`test_case` 鍜?`ai_analysis_record`銆?
-- 绗?5 闃舵锛歅ytest + Requests 鎵ц寮曟搸锛屽啓鍏?`execution_task`銆乣execution_result`銆乣test_report`銆?
-- 绗?6 闃舵锛歏ue3 鍓嶇 MVP 椤甸潰銆?
-- 绗?7 闃舵锛歁VP 鑱旇皟楠屾敹銆?
-- 绗?8 闃舵锛歁VP 鍥哄寲涓?`v0.1.0-mvp`銆?
-- 绗?9 闃舵锛氬褰㈡€佹帴鍙ｈ緭鍏ュ鍏ヤ笌 AI 杈呭姪瑙ｆ瀽銆?
-- 绗?10 闃舵锛氶壌鏉冮厤缃笌涓氬姟鏂█澧炲己銆?
-- 绗?10.1 闃舵锛氭柇瑷€绯荤粺 2.0锛屽畬鎴?AI 寤鸿銆丼wagger 鍩虹鏂█銆佺敤鎴锋柇瑷€鐨勮瀺鍚堟墽琛岋紝骞朵笂绾?DSL 鍙鍖栨柇瑷€缂栬緫鍣ㄣ€?
+- 第 1 阶段：项目骨架、后端基础工程、数据库表、SQLAlchemy models、健康检查、基础文档。
+- 第 2 阶段：项目、环境、接口资产、测试用例基础 CRUD。
+- 第 3 阶段：Swagger/OpenAPI JSON、文件、URL 和 curl 导入解析。
+- 第 4 阶段：mock AI 用例生成，写入 `test_case` 和 `ai_analysis_record`。
+- 第 5 阶段：Pytest + Requests 执行引擎，写入 `execution_task`、`execution_result`、`test_report`。
+- 第 6 阶段：Vue3 前端 MVP 页面。
+- 第 7 阶段：MVP 联调验收。
+- 第 8 阶段：MVP 固化为 `v0.1.0-mvp`。
+- 第 9 阶段：多形态接口输入导入与 AI 辅助解析。
+- 第 10 阶段：鉴权配置与业务断言增强。
+- 第 10.1 阶段：断言系统 2.0，完成 AI 建议、Swagger 基础断言、用户断言的融合执行，并上线 DSL 可视化断言编辑器。
 
-## 绗?9 闃舵宸插畬鎴愬唴瀹?
+## 第 9 阶段已完成内容
 
-- 鏀寔鍦ㄧ嚎 OpenAPI/Swagger JSON URL銆?
-- 鏀寔 Knife4j / Swagger UI 椤甸潰鍦板潃鑷姩鍙戠幇鐪熷疄鎺ュ彛鏂囨。 JSON銆?
-- 鏀寔鍊欓€夊湴鍧€锛歚/v3/api-docs`銆乣/v2/api-docs`銆乣/swagger-resources`銆乣/api-docs`銆乣/openapi.json`銆乣/swagger.json`銆?
-- 鏀寔鍗曟帴鍙ｆ枃妗ｉ〉闈?URL 鐨?hash hint 鎻愬彇鍜屾帴鍙ｇ瓫閫夈€?
-- 鏀寔鎺ュ彛璺緞銆佽姹傛柟娉曘€佸悕绉般€佸垎缁勩€佸叧閿瘝绛涢€夈€?
-- 鏀寔 Swagger/OpenAPI JSON 鍐呭銆?
-- 淇濈暀 curl 鏂囨湰瀵煎叆鑳藉姏銆?
-- 鏀寔浠呴瑙堛€佷繚瀛橀€変腑鎺ュ彛銆佷繚瀛樺叏閮ㄦ帴鍙ｃ€?
-- 鏈壘鍒版帴鍙ｈ祫浜ф椂鍙垱寤哄緟瀹屽杽鎺ュ彛鑽夌銆?
-- 鍓嶇鎺ュ彛瀵煎叆椤垫敮鎸侀瑙堝垪琛ㄣ€佸嬀閫夈€佺紪杈戠‘璁ゅ拰淇濆瓨銆?
-- 鏀寔 OpenAPI / Swagger 鍩虹 `$ref` 灞曞紑銆?
-- 鏀寔鍙傛暟 JSON銆丅ody JSON銆佸搷搴?JSON 鐨勨€滃睍寮€绀轰緥 / 灞曞紑 Schema鈥濆垏鎹€?
-- 鏀寔鐢ㄦ埛缂栬緫棰勮 JSON 鍚庝繚瀛樻帴鍙ｈ祫浜с€?
-- 淇濆瓨鍚庣殑鎺ュ彛璧勪骇鍙户缁敤浜?AI mock 娴嬭瘯鐢ㄤ緥鐢熸垚銆?
+- 支持在线 OpenAPI/Swagger JSON URL。
+- 支持 Knife4j / Swagger UI 页面地址自动发现真实接口文档 JSON。
+- 支持候选地址：`/v3/api-docs`、`/v2/api-docs`、`/swagger-resources`、`/api-docs`、`/openapi.json`、`/swagger.json`。
+- 支持单接口文档页面 URL 的 hash hint 提取和接口筛选。
+- 支持接口路径、请求方法、名称、分组、关键词筛选。
+- 支持 Swagger/OpenAPI JSON 内容。
+- 保留 curl 文本导入能力。
+- 支持仅预览、保存选中接口、保存全部接口。
+- 未找到接口资产时只创建待完善接口草稿。
+- 前端接口导入页支持预览列表、勾选、编辑确认和保存。
+- 支持 OpenAPI / Swagger 基础 `$ref` 展开。
+- 支持参数 JSON、Body JSON、响应 JSON 的“展开示例 / 展开 Schema”切换。
+- 支持用户编辑预览 JSON 后保存接口资产。
+- 保存后的接口资产可继续用于 AI mock 测试用例生成。
 
-## 褰撳墠闄愬埗
+## 当前限制
 
-- AI 浠嶄负 mock锛屼笉鎺ョ湡瀹炲ぇ妯″瀷銆?
-- AI 杈呭姪瑙ｆ瀽鍙仛鎻愮ず鍜岃竟鐣屾帶鍒讹紝涓嶄粠 HTML 椤甸潰鍑┖鐢熸垚瀹屾暣鎺ュ彛缁撴瀯銆?
-- 宸叉敮鎸佺幆澧冪骇 token銆乧ookie銆乭eader 閰嶇疆鍜屾墽琛屾椂鑷姩鎼哄甫锛屼絾澶嶆潅 token 鑷姩鍒锋柊銆佺櫥褰曟€佽嚜鍔ㄨ幏鍙栥€丼SO銆侀獙璇佺爜銆佹潈闄愩€佸鐢ㄦ埛鍗忎綔銆佺敓浜ч儴缃叉殏鏈疄鐜般€?
+- AI 仍为 mock，不接真实大模型。
+- AI 辅助解析只做提示和边界控制，不从 HTML 页面凭空生成完整接口结构。
+- 已支持环境级 token、cookie、header 配置和执行时自动携带，但复杂 token 自动刷新、登录态自动获取、SSO、验证码、权限、多用户协作、生产部署暂未实现。
 
-## 绗?10 闃舵宸插畬鎴愬唴瀹?
+## 第 10 阶段已完成内容
 
-- 鐜閰嶇疆椤垫敮鎸侀壌鏉冪被鍨嬨€乀oken銆丆ookie銆丠eader JSON銆乣auth_config_json`銆乼imeout 鍜?retry 閰嶇疆銆?
-- 鎵ц寮曟搸璇诲彇鐜閰嶇疆锛岃嚜鍔ㄥ悎骞剁幆澧冨叕鍏?headers銆佺幆澧冮壌鏉?headers 鍜屾祴璇曠敤渚嬭姹?headers銆?
-- 璇锋眰澶村悎骞朵紭鍏堢骇涓猴細鐜鍏叡 headers < 鐜閴存潈 headers < 娴嬭瘯鐢ㄤ緥璇锋眰 headers銆?
-- 鏀寔鍩虹閲嶈瘯娆℃暟閰嶇疆銆?
-- 涓氬姟鏂█鏀寔 `business_code`銆乣business_success`銆乣json_path_not_empty`銆?
-- 褰撳搷搴?JSON 鍖呭惈 `code` 鎴?`success` 涓旂敤渚嬫湭鏄惧紡鏂█鏃讹紝鎵ц寮曟搸浼氳嚜鍔ㄥ鍔犻粯璁や笟鍔℃柇瑷€锛岄伩鍏?HTTP 200 浣嗕笟鍔″け璐ヨ璇垽涓洪€氳繃銆?
-- 鎵ц缁撴灉淇濆瓨璇锋眰鍙傛暟銆佸搷搴斾綋銆乧url 鍛戒护鍜屾柇瑷€缁撴灉銆?
-- 鎵ц鎶ュ憡椤靛睍绀烘柇瑷€缁撴灉锛屽苟缁х画鏀寔璇锋眰鍙傛暟銆佸搷搴斾綋銆乧url 灞曞紑鍜屽鍒躲€?
-- 鎶ュ憡涓庢棩蹇椾腑涓嶄繚瀛樺畬鏁?token / cookie锛屼粎淇濆瓨鑴辨晱鍚庣殑璇锋眰澶村拰 curl銆?
+- 环境配置页支持鉴权类型、Token、Cookie、Header JSON、`auth_config_json`、timeout 和 retry 配置。
+- 执行引擎读取环境配置，自动合并环境公共 headers、环境鉴权 headers 和测试用例请求 headers。
+- 请求头合并优先级为：环境公共 headers < 环境鉴权 headers < 测试用例请求 headers。
+- 支持基础重试次数配置。
+- 业务断言支持 `business_code`、`business_success`、`json_path_not_empty`。
+- 当响应 JSON 包含 `code` 或 `success` 且用例未显式断言时，执行引擎会自动增加默认业务断言，避免 HTTP 200 但业务失败被误判为通过。
+- 执行结果保存请求参数、响应体、curl 命令和断言结果。
+- 执行报告页展示断言结果，并继续支持请求参数、响应体、curl 展开和复制。
+- 报告与日志中不保存完整 token / cookie，仅保存脱敏后的请求头和 curl。
 
-## 绗?10.1 闃舵宸插畬鎴愬唴瀹?
+## 第 10.1 阶段已完成内容
 
-- 鏂板 `backend/app/core/assertion_engine_v2.py` 鏂█铻嶅悎寮曟搸銆?
-- 缁熶竴鏂█缁撴瀯锛屾敮鎸?`source`銆乣type`銆乣path`銆乣operator`銆乣expected`銆乣priority`銆乣enabled`銆?
-- 鏀寔涓夊眰鏂█鏉ユ簮锛氱敤鎴锋柇瑷€銆丼wagger/OpenAPI 鍩虹鏂█銆乵ock AI 鏂█寤鸿銆?
-- 鏂█铻嶅悎浼樺厛绾т负锛氱敤鎴锋柇瑷€ > Swagger/OpenAPI 鏂█ > AI 寤鸿鏂█銆?
-- 鍚屼竴璺緞鏂█鍘婚噸鏃朵繚鐣欐渶楂樹紭鍏堢骇鏂█锛屾渶缁堟墽琛岀粨鏋滃彲杩芥函鏂█鏉ユ簮銆?
-- `business_code` 涓嶅啀鍐欐涓?1锛屾敼涓烘敮鎸?`success_codes` 鎴?`success_expression`銆?
-- `$.data` 鐩稿叧 JSONPath 鏍￠獙浠呭湪涓氬姟鎴愬姛鍚庢墽琛岋紝閬垮厤 401/500 鎴栦笟鍔″け璐ユ椂璇垽銆?
-- mock AI 鍙敓鎴愬甫 `confidence` 鐨勭粨鏋勫寲鏂█寤鸿锛岄粯璁や笉鎺у埗 pass/fail銆?
-- 娴嬭瘯鐢ㄤ緥椤甸潰鍙煡鐪?AI 鏂█寤鸿銆丼wagger 鏂█銆佺敤鎴锋柇瑷€鍜屾渶缁堣瀺鍚堟柇瑷€棰勮銆?
-- 鎺ュ彛璇︽儏椤靛彲鏌ョ湅 Swagger 鍩虹鏂█棰勮銆?
-- 鏂板鏂█ DSL 鍙鍖栫郴缁燂紝鐢ㄦ埛涓嶅啀鎵嬪啓 JSON 鏂█銆?
-- DSL 鏀寔 `$.code == 200`銆乣$.data != null`銆乣status_code == 200`銆乣$.msg contains 鎴愬姛`銆?
-- 鏀寔 `==`銆乣!=`銆乣>`銆乣<`銆乣contains`銆乣exists`銆乣not null`銆?
-- AI / Swagger / 鐢ㄦ埛鏂█缁熶竴灞曠ず涓?DSL锛孞SON 鍙湪鍚庣鎵ц灞傚唴閮ㄤ娇鐢ㄣ€?
-- 鏂板 DSL 瑙ｆ瀽鍜?JSON 杞?DSL 鎺ュ彛銆?
+- 新增 `backend/app/core/assertion_engine_v2.py` 断言融合引擎。
+- 统一断言结构，支持 `source`、`type`、`path`、`operator`、`expected`、`priority`、`enabled`。
+- 支持三层断言来源：用户断言、Swagger/OpenAPI 基础断言、mock AI 断言建议。
+- 断言融合优先级为：用户断言 > Swagger/OpenAPI 断言 > AI 建议断言。
+- 同一路径断言去重时保留最高优先级断言，最终执行结果可追溯断言来源。
+- `business_code` 不再写死为 1，改为支持 `success_codes` 或 `success_expression`。
+- `$.data` 相关 JSONPath 校验仅在业务成功后执行，避免 401/500 或业务失败时误判。
+- mock AI 只生成带 `confidence` 的结构化断言建议，默认不控制 pass/fail。
+- 测试用例页面可查看 AI 断言建议、Swagger 断言、用户断言和最终融合断言预览。
+- 接口详情页可查看 Swagger 基础断言预览。
+- 新增断言 DSL 可视化系统，用户不再手写 JSON 断言。
+- DSL 支持 `$.code == 200`、`$.data != null`、`status_code == 200`、`$.msg contains 成功`。
+- 支持 `==`、`!=`、`>`、`<`、`contains`、`exists`、`not null`。
+- AI / Swagger / 用户断言统一展示为 DSL，JSON 只在后端执行层内部使用。
+- 新增 DSL 解析和 JSON 转 DSL 接口。
 
-## 鍚庣画闃舵
+## 后续阶段
 
-- 绗?11 闃舵锛氱湡瀹?AI 澶фā鍨嬫帴鍏?
-- 绗?12 闃舵锛氭帴鍙ｄ緷璧栧叧绯讳笌閾捐矾鐢ㄤ緥
-- 绗?13 闃舵锛氭姤鍛婂拰澶辫触鍒嗘瀽澧炲己
-- 绗?14 闃舵锛欳I/CD銆佸畾鏃朵换鍔′笌鏉冮檺绯荤粺
+- 第 11 阶段：真实 AI 大模型接入
+- 第 12 阶段：接口依赖关系与链路用例
+- 第 13 阶段：报告和失败分析增强
+- 第 14 阶段：CI/CD、定时任务与权限系统
